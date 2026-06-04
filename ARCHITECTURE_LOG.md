@@ -254,3 +254,29 @@ Create the authenticated `/api/events` and `/api/events/{id}` endpoints, parse t
 #### 4. List Pagination and Severity Filtering
 *   **Decision:** Exposed optional `severity` query parameters and `limit`/`offset` slicing controls on the `GET /api/events` route.
 *   **Why (Performance):** Serving all events sequentially wastes network bandwidth and degrades UI responsiveness. Offloading filtering and slicing to the backend provides tight, high-performance interactions.
+
+---
+
+## [2026-06-04] STEP-007: Frontend-Backend Integration and CORS Authorization
+
+### 🎯 Step Goal
+Securely align the communication between the Vite React frontend and the containerized FastAPI backend by mapping ports and enabling CORS policies without modifying the frontend.
+
+### 📁 Files Created/Modified
+*   `[MODIFY]` [docker-compose.yml](file:///c:/Users/matan/PenguWave/docker-compose.yml) — Map port 3001:8000.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Register CORSMiddleware.
+*   `[MODIFY]` [backend-service/tests/test_database_health.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_database_health.py) — Point BASE_URL to port 3001.
+*   `[MODIFY]` [backend-service/tests/test_auth_flow.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_auth_flow.py) — Point BASE_URL to port 3001.
+*   `[MODIFY]` [backend-service/tests/test_rbac_controls.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_rbac_controls.py) — Point BASE_URL to port 3001.
+*   `[MODIFY]` [backend-service/tests/test_events_flow.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_events_flow.py) — Point BASE_URL to port 3001.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Zero-Touch Frontend Integration (Port Mapping)
+*   **Decision:** Mapped host port 3001 to container port 8000 inside the Docker service orchestrator.
+*   **Why:** The frontend React code is hardcoded to make requests to port 3001. Rather than violating the constraint of not editing frontend files, routing traffic from host port 3001 to backend port 8000 inside the Docker virtual network bridges the communication seamlessly.
+
+#### 2. Granular CORS Middleware Policies
+*   **Decision:** Registered FastAPI's `CORSMiddleware` with `allow_origins` set specifically to `http://localhost:5173` and `http://127.0.0.1:5173`.
+*   **Why (Security):** Since the React frontend is served from the Vite development server (port 5173) and the API server resides on port 3001, browser Same-Origin policies block requests unless explicitly permitted. Authorizing Vite origins via wildcard CORS (`*`) is unsafe; specifying exact host origins maintains tight boundary controls while enabling seamless auth and state sharing with `allow_credentials=True`.
+

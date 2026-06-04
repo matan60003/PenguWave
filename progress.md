@@ -2,15 +2,16 @@
 
 ## Project Overview
 - **Objective**: Build a scalable, containerized Python backend for the Analyst Platform (Upwind Part 2).
-- **Status**: Infrastructure Setup
-- **Progress**: 85%
+- **Status**: Completed
+- **Progress**: 100%
 
-## 🔄 Current Phase: Phase 1 - Dockerized Infrastructure
+## 🔄 Current Phase: Done
 
 ### Pending Steps
-- [ ] **STEP-007**: Update the React Frontend to proxy/fetch requests directly from the Dockerized FastAPI server.
+*None*
 
 ## ✅ Completed Steps
+- [x] **STEP-007**: Update the React Frontend to proxy/fetch requests directly from the Dockerized FastAPI server.
 - [x] **STEP-001**: Create `Dockerfile` for FastAPI and a `docker-compose.yml` file orchestration with a PostgreSQL service.
 - [x] **STEP-002**: Initialize FastAPI environment inside Docker and verify database connectivity (Connection Pool).
 - [x] **STEP-003**: Set up SQLAlchemy models for Users and implement password hashing with `passlib[bcrypt]`.
