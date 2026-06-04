@@ -6,6 +6,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
 @app.get("/healthz", tags=["Health"])
 async def health_check():
     """
