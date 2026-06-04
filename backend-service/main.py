@@ -1,4 +1,5 @@
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -48,6 +49,28 @@ def get_current_user(
         )
 
     return user
+
+
+def require_role(allowed_roles: list[str]):
+    """
+    Dependency helper that validates if the authenticated user has an authorized role.
+    Raises a 403 Forbidden with uniform formatting if unauthorized.
+    """
+
+    def dependency(
+        current_user: models.User = Depends(get_current_user),
+    ) -> models.User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized (wrong role)",
+            )
+        return current_user
+
+    return dependency
+
+
+require_admin = Depends(require_role(["admin"]))
 
 
 @asynccontextmanager
@@ -183,3 +206,112 @@ async def get_me(current_user: models.User = Depends(get_current_user)):
     Get the currently authenticated user's info from the decoded bearer token.
     """
     return current_user
+
+
+@app.get(
+    "/api/users",
+    response_model=list[schemas.UserResponse],
+    tags=["Users"],
+    dependencies=[require_admin],
+)
+async def get_users(db: Session = Depends(get_db)):
+    """
+    Get the list of all users. Admin-only.
+    """
+    return db.query(models.User).all()
+
+
+@app.post(
+    "/api/users",
+    response_model=schemas.UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Users"],
+    dependencies=[require_admin],
+)
+async def create_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+    """
+    Create a new user. Admin-only.
+    """
+    # Check if user already exists
+    existing = (
+        db.query(models.User).filter(models.User.email == user_data.email).first()
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User with this email already exists",
+        )
+
+    # Generate a unique usr- prefix ID
+    user_id = f"usr-{uuid.uuid4()}"
+    new_user = models.User(
+        id=user_id,
+        email=user_data.email,
+        hashed_password=security.hash_password(user_data.password),
+        role=user_data.role,
+        status="active",
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@app.patch(
+    "/api/users/{id}",
+    response_model=schemas.UserResponse,
+    tags=["Users"],
+    dependencies=[require_admin],
+)
+async def update_user(
+    id: str, user_data: schemas.UserUpdate, db: Session = Depends(get_db)
+):
+    """
+    Update a user's role or status. Admin-only.
+    """
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if user_data.role is not None:
+        user.role = user_data.role
+    if user_data.status is not None:
+        user.status = user_data.status
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.delete(
+    "/api/users/{id}",
+    response_model=schemas.MessageResponse,
+    tags=["Users"],
+)
+async def delete_user(
+    id: str,
+    current_user: models.User = Depends(require_role(["admin"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a user. Admin-only. Blocks self-deletion.
+    """
+    if current_user.id == id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own admin account",
+        )
+
+    user = db.query(models.User).filter(models.User.id == id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted"}

@@ -193,3 +193,30 @@ Build the OAuth2-compatible token authentication scheme, implement token generat
 #### 4. Automatic Database Auto-Migration & Seeding (Lifespan Context)
 *   **Decision:** Used `Base.metadata.create_all` to automatically synchronize tables and seed a default admin user (`admin@penguwave.com`) with a key-stretched bcrypt password on startup.
 *   **Why (Ease of Development):** Ensures the container cluster boots into a fully functional and testable state immediately without requiring manual SQL initialization script intervention.
+
+---
+
+## [2026-06-04] STEP-005: JWT Verification & RBAC Authorization
+
+### 🎯 Step Goal
+Build the JWT verification framework, implement role validation checks to restrict resource access, prevent authorization bypass / IDOR attacks, and deploy the admin-only user management REST endpoints.
+
+### 📁 Files Created/Modified
+*   `[MODIFY]` [backend-service/schemas.py](file:///c:/Users/matan/PenguWave/backend-service/schemas.py) — Created `UserCreate`, `UserUpdate`, and `MessageResponse` schemas.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Integrated `require_role` parameter dependency helper, `require_admin` gate, and the four CRUD endpoints for user administration.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Progress updated to `71%`.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Logged architectural rationale.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Decoupled Role Validation via FastAPI Dependency Injection
+*   **Decision:** Used FastAPI parameter dependencies (`Depends(require_role([...]))`) rather than standard HTTP ASGI middleware to intercept and authorize requests.
+*   **Why (Security & Flexibility):** Integrating guards directly into endpoint parameters makes authorization self-documenting and granular. It ensures route parameters (such as path parameters or database sessions) are fully accessible to security functions, enabling strict, context-aware authorization.
+
+#### 2. Literal Validation Constraints on Roles & Account Status
+*   **Decision:** Implemented `Literal["admin", "analyst", "user"]` and `Literal["active", "suspended"]` constraints inside Pydantic schemas.
+*   **Why (Security):** Blocks unauthorized users from escalating privileges or inputting arbitrary roles (e.g. `superuser` or custom system credentials) when admin routes create or update user records.
+
+#### 3. Protection Against Self-Lockout (Self-Deletion Guard)
+*   **Decision:** Implemented a validation condition inside `DELETE /api/users/{id}` that explicitly prevents the authenticated admin user from deleting their own user account.
+*   **Why (Resilience):** Protects system availability by preventing accidental administrative self-lockout, ensuring that at least one admin remains capable of orchestrating user access.

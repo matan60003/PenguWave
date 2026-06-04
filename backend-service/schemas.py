@@ -1,3 +1,4 @@
+from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, ConfigDict
 
 
@@ -34,3 +35,32 @@ class LoginResponse(BaseModel):
 
     token: str
     user: UserResponse
+
+
+class UserCreate(BaseModel):
+    """
+    Request payload model for user creation.
+    Enforces valid email formatting and specific roles.
+    """
+
+    email: EmailStr
+    password: str
+    role: Literal["admin", "analyst", "user"] = "user"
+
+
+class UserUpdate(BaseModel):
+    """
+    Request payload model for user updates.
+    Allows modifying either role or status, or both.
+    """
+
+    role: Optional[Literal["admin", "analyst", "user"]] = None
+    status: Optional[Literal["active", "suspended"]] = None
+
+
+class MessageResponse(BaseModel):
+    """
+    Standard success message response.
+    """
+
+    message: str
