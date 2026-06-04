@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { User } from "../types";
 import { getUsers, createUser, deleteUser } from "../api";
+import { useAuth } from "../context/AuthContext";
 
 export default function UsersPage() {
-  // TODO: add role check before rendering
-  // if (user.role !== 'admin') return null;
-
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -14,10 +13,20 @@ export default function UsersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (user?.role !== "admin") return;
     getUsers()
       .then(data => setUsers(data))
       .catch(err => console.error("Failed to fetch users", err));
-  }, []);
+  }, [user]);
+
+  if (user?.role !== "admin") {
+    return (
+      <div className="page-container">
+        <h2 style={{ color: "red" }}>Access Denied</h2>
+        <p>You must be an administrator to view this page.</p>
+      </div>
+    );
+  }
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();

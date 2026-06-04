@@ -33,6 +33,7 @@ export default function CreateEventModal({ onClose, onCreated }: Props) {
         sourceIp,
         tags: tags.split(",").map(t => t.trim()),
         userId: "system",
+        timestamp: new Date().toISOString(),
       });
       onCreated(newEvent);
     } catch (err: unknown) {

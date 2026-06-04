@@ -80,7 +80,7 @@ export async function deleteUser(id: string) {
   return res.json();
 }
 
-export async function createEvent(eventData: Omit<SecurityEvent, "id" | "timestamp">) {
+export async function createEvent(eventData: Omit<SecurityEvent, "id">) {
   const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/events`, {
     method: "POST",
