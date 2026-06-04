@@ -159,3 +159,37 @@ Define the SQLAlchemy User database model representing application users and set
 #### 5. Type-Annotated Database Mapping (SQLAlchemy 2.0)
 *   **Decision:** Defined model fields using `Mapped[type] = mapped_column(...)` pointing to a unified base declarative class.
 *   **Why (Quality):** Integrates type annotations with static code checkers (Mypy) to catch type mismatches at development time. Defining a common `Base` in `database.py` allows all subsequent feature models (e.g. `Event`) to register on a single metadata registry for migrations.
+
+---
+
+## [2026-06-04] STEP-004: OAuth2 User Authentication & JWT Generation
+
+### 🎯 Step Goal
+Build the OAuth2-compatible token authentication scheme, implement token generation and validation using JWT, design request and response validation schemas, and deploy secure endpoints for user login, logout, and token identity resolution.
+
+### 📁 Files Created/Modified
+*   `[NEW]` [backend-service/schemas.py](file:///c:/Users/matan/PenguWave/backend-service/schemas.py) — Authentication request, user response, and token schemas.
+*   `[MODIFY]` [backend-service/requirements.txt](file:///c:/Users/matan/PenguWave/backend-service/requirements.txt) — Included `email-validator` for Pydantic.
+*   `[MODIFY]` [backend-service/config.py](file:///c:/Users/matan/PenguWave/backend-service/config.py) — Added JWT settings parameters.
+*   `[MODIFY]` [backend-service/security.py](file:///c:/Users/matan/PenguWave/backend-service/security.py) — Added token encoding/decoding cryptographics.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Added custom exception handlers, routes, database migration, and admin seeding.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Progress tracking updates.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documentation updates.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Custom Global Exception Handlers
+*   **Decision:** Registered global FastAPI exception handlers for `HTTPException` and `RequestValidationError` to return error responses matching `{ "error": "Human-readable error message" }`.
+*   **Why (Contract Compliance):** By default, FastAPI/Pydantic returns HTTP and validation error messages inside a `"detail"` payload or as nested objects. Overriding these handlers guarantees absolute adherence to the `docs/api_contract.md` specifications, ensuring a uniform error shape for the client.
+
+#### 2. Stateless Bearer Session Architecture (JWT)
+*   **Decision:** Configured standard OAuth2 JWT access tokens utilizing the `HS256` symmetric signing algorithm and a configurable expiration period.
+*   **Why (Security & Scalability):** Eliminates server-side session lookup overhead by containing verified identity claims within the signed token itself. The token is cryptographically verified on every request using the backend `SECRET_KEY`, protecting database endpoints from unauthenticated access while supporting horizontal scaling.
+
+#### 3. Strict Boundary Validation (EmailStr & Pydantic ConfigDict)
+*   **Decision:** Enforced `EmailStr` validations on incoming authentication requests and restricted user payload responses via Pydantic v2 `ConfigDict(from_attributes=True)`.
+*   **Why (Security & Stability):** Validating emails at the interface boundary blocks malformed entries. Crucially, mapping SQLAlchemy ORM structures to strict response schemas excludes the sensitive `hashed_password` database field, ensuring password hashes are never leaked to API clients.
+
+#### 4. Automatic Database Auto-Migration & Seeding (Lifespan Context)
+*   **Decision:** Used `Base.metadata.create_all` to automatically synchronize tables and seed a default admin user (`admin@penguwave.com`) with a key-stretched bcrypt password on startup.
+*   **Why (Ease of Development):** Ensures the container cluster boots into a fully functional and testable state immediately without requiring manual SQL initialization script intervention.
