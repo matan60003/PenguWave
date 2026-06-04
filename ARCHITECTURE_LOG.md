@@ -57,6 +57,7 @@ Configure a continuous integration workflow running static checks, type validati
 ### 📁 Files Created/Modified
 *   `[NEW]` [.github/workflows/ci.yml](file:///c:/Users/matan/PenguWave/.github/workflows/ci.yml) — GitHub Actions workflow configuration.
 *   `[NEW]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Baseline FastAPI app entrypoint.
+*   `[MODIFY]` [backend-service/requirements.txt](file:///c:/Users/matan/PenguWave/backend-service/requirements.txt) — Security patch updates.
 *   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documentation updates.
 
 ### 🏗️ Architectural Decisions & "Why"
@@ -78,5 +79,10 @@ Configure a continuous integration workflow running static checks, type validati
 #### 4. Baseline Scaffolding for Quality Gates
 *   **Decision:** Initialized a basic `main.py` containing a `/healthz` check endpoint rather than bypassing or silencing Mypy compiler checks.
 *   **Why:** Rather than muting checks (which hides potential bugs) or postponing type enforcement, scaffolding the entrypoint file immediately satisfies the compiler. The `/healthz` endpoint serves as a standard readiness probe for containerized environments.
+
+#### 5. SCA Vulnerability Patching
+*   **Decision:** Upgraded `pyjwt` to `2.13.0` and `fastapi` to `0.115.8` (which transitively upgrades the underlying `starlette` dependency to `0.45.3`).
+*   **Why (Security):** Older versions of `pyjwt` and `starlette` contain critical security vulnerabilities (e.g. signature verification bypasses and DoS opportunities). Upgrading them remediates all reported vulnerabilities, securing our authentication mechanics and HTTP routing pipeline.
+
 
 
