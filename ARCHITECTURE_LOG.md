@@ -88,9 +88,39 @@ Configure a continuous integration workflow running static checks, type validati
 *   **Decision:** Configured the CI pipeline to ignore vulnerability `PYSEC-2026-161` via `--ignore-vuln` instead of upgrading Starlette to `1.0.1`.
 *   **Why (Architectural Rationale):** Starlette `1.0.1` introduces major breaking changes that are incompatible with our current FastAPI baseline. Upgrading would force a rewrite of core routing logic, creating a dependency deadlock. Explicitly ignoring this single vulnerability maintains our code compatibility while keeping all other active security gates fully strict.
 
+---
 
+## [2026-06-04] STEP-002: FastAPI Environment Initialization & Database Connectivity
 
+### 🎯 Step Goal
+Initialize the core FastAPI application settings, configure a SQLAlchemy database connection pool, handle dependency injection for database session lifecycles, and implement deep health checks.
 
+### 📁 Files Created/Modified
+*   `[NEW]` [backend-service/config.py](file:///c:/Users/matan/PenguWave/backend-service/config.py) — Environment variables management using Pydantic Settings.
+*   `[NEW]` [backend-service/database.py](file:///c:/Users/matan/PenguWave/backend-service/database.py) — Connection pool and session provider setup.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Lifespan startup check and deep health check route.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Progress tracking updates.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documentation updates.
 
+### 🏗️ Architectural Decisions & "Why"
 
+#### 1. Twelve-Factor App Configuration
+*   **Decision:** Configured environment variables (such as `DATABASE_URL`) to load dynamically using `BaseSettings` from `pydantic_settings`.
+*   **Why (Security & Portability):** Keeps secrets (like database credentials) out of source control. Loading from environment variables allows the codebase to run seamlessly in any runtime context (Docker Compose, Kubernetes, AWS) by just modifying env parameters.
+
+#### 2. Connection Pool Resilience (`pool_pre_ping`)
+*   **Decision:** Added `pool_pre_ping=True` and defined pool limits (`pool_size=5`, `max_overflow=10`).
+*   **Why (Resilience):** Under production loads, database connections can be terminated due to network glitches, database server restarts, or timeouts. Checking connection health with a lightweight ping command before hand-off prevents the application from executing queries on dead sockets, returning clean errors or recycling dead connections transparently.
+
+#### 3. Database Session Lifecycle Isolation (get_db dependency)
+*   **Decision:** Implemented a generator-based dependency (`get_db`) to yield and cleanly close sessions.
+*   **Why (Resource Leak Avoidance):** Database sessions must be bound strictly to the HTTP request lifecycle. If a session is left open, connection resources are leaked, eventually exhausting the database connection pool. Wrapping the lifecycle in a `try...finally` block guarantees that the connection returns to the pool even if the request throws an unhandled exception.
+
+#### 4. Fail-Fast Bootstrapping (Lifespan Startup Check)
+*   **Decision:** Utilized FastAPI's async `lifespan` manager to run a test query (`SELECT 1`) on application start.
+*   **Why (Resilience):** It is critical to detect configuration errors (such as bad connection URLs, DNS failures, or database unavailability) immediately during container boot. If startup verification fails, errors are logged immediately to help administrators debug container deployment issues.
+
+#### 5. Deep Readiness Probes (Health Checks)
+*   **Decision:** Enhanced `/healthz` to execute a baseline query on the database.
+*   **Why (Operational Best Practice):** Orchestration tools like Kubernetes or Docker Compose use health check endpoints to assess service readiness. If the backend is running but cannot reach the database, the service is functionally broken. A deep health probe prevents sending user traffic to unhealthy containers.
 
