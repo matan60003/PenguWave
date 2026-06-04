@@ -3,4 +3,5 @@ node_modules/
 *.log
 progress.md
 ARCHITECTURE_LOG.md
+ARCHITECTURE.md
 .antigravity/
