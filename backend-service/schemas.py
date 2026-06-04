@@ -68,6 +68,22 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class EventCreate(BaseModel):
+    """
+    Request payload schema for a security event.
+    """
+
+    timestamp: str
+    severity: str
+    title: str
+    description: str
+    assetHostname: str
+    assetIp: str
+    sourceIp: str
+    tags: list[str]
+    userId: str
+
+
 class EventResponse(BaseModel):
     """
     Representational response schema for a security event.
@@ -83,3 +99,5 @@ class EventResponse(BaseModel):
     sourceIp: str
     tags: list[str]
     userId: str
+
+    model_config = ConfigDict(from_attributes=True)

@@ -11,6 +11,7 @@
 - [ ] **STEP-007**: Update the React Frontend to proxy/fetch requests directly from the Dockerized FastAPI server.
 
 ## ✅ Completed Steps
+- [x] **PostgreSQL Events Migration**: Migrated the events layer from static JSON parsing to database persistence in PostgreSQL, with startup auto-seeding.
 - [x] **STEP-001**: Create `Dockerfile` for FastAPI and a `docker-compose.yml` file orchestration with a PostgreSQL service.
 - [x] **STEP-002**: Initialize FastAPI environment inside Docker and verify database connectivity (Connection Pool).
 - [x] **STEP-003**: Set up SQLAlchemy models for Users and implement password hashing with `passlib[bcrypt]`.

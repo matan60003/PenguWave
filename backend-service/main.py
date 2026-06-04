@@ -160,6 +160,31 @@ async def lifespan(app: FastAPI):
                 db.add(default_admin)
                 db.commit()
                 logger.info("Default admin user successfully seeded.")
+
+            # Check if security events need to be seeded
+            existing_event = db.query(models.Event).first()
+            if not existing_event:
+                logger.info("Seeding security events from JSON...")
+                try:
+                    events_data = load_mock_events()
+                    for evt in events_data:
+                        db_evt = models.Event(
+                            id=evt["id"],
+                            timestamp=evt["timestamp"],
+                            severity=evt["severity"],
+                            title=evt["title"],
+                            description=evt["description"],
+                            assetHostname=evt["assetHostname"],
+                            assetIp=evt["assetIp"],
+                            sourceIp=evt["sourceIp"],
+                            tags=evt["tags"],
+                            userId=evt["userId"],
+                        )
+                        db.add(db_evt)
+                    db.commit()
+                    logger.info("Security events successfully seeded.")
+                except Exception as ex_seed:
+                    logger.error(f"Failed to seed security events: {ex_seed}")
         logger.info("Database bootstrap completed successfully.")
     except Exception as e:
         logger.critical(f"Database bootstrap failed: {e}")
@@ -402,23 +427,60 @@ async def get_events(
     severity: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
+    db: Session = Depends(get_db),
 ):
     """
-    Get the list of security events.
+    Get the list of security events from PostgreSQL.
     Supports optional severity filtering and limit/offset pagination.
     """
-    events = load_mock_events()
+    query = db.query(models.Event)
 
     if severity:
-        severity_upper = severity.upper()
-        events = [e for e in events if e.get("severity") == severity_upper]
+        query = query.filter(models.Event.severity == severity.upper())
+
+    # Sort by ID to ensure stable ordering matching JSON sequence
+    query = query.order_by(models.Event.id)
 
     if offset is not None:
-        events = events[offset:]
+        query = query.offset(offset)
     if limit is not None:
-        events = events[:limit]
+        query = query.limit(limit)
 
-    return events
+    return query.all()
+
+
+@app.post(
+    "/api/events",
+    response_model=schemas.EventResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Events"],
+    dependencies=[Depends(get_current_user)],
+)
+async def create_event(
+    event_data: schemas.EventCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new security event in PostgreSQL.
+    """
+    # Generate a unique event ID (evt-...)
+    event_id = f"evt-{uuid.uuid4()}"
+    new_event = models.Event(
+        id=event_id,
+        timestamp=event_data.timestamp,
+        severity=event_data.severity,
+        title=event_data.title,
+        description=event_data.description,
+        assetHostname=event_data.assetHostname,
+        assetIp=event_data.assetIp,
+        sourceIp=event_data.sourceIp,
+        tags=event_data.tags,
+        userId=event_data.userId,
+    )
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+    return new_event
 
 
 @app.get(
@@ -427,13 +489,12 @@ async def get_events(
     tags=["Events"],
     dependencies=[Depends(get_current_user)],
 )
-async def get_event(id: str):
+async def get_event(id: str, db: Session = Depends(get_db)):
     """
-    Get a single security event by ID.
+    Get a single security event by ID from PostgreSQL.
     Raises 404 if the event is not found.
     """
-    events = load_mock_events()
-    event = next((e for e in events if e.get("id") == id), None)
+    event = db.query(models.Event).filter(models.Event.id == id).first()
 
     if not event:
         raise HTTPException(
@@ -442,3 +503,24 @@ async def get_event(id: str):
         )
 
     return event
+
+
+@app.delete(
+    "/api/events/{id}",
+    response_model=schemas.MessageResponse,
+    tags=["Events"],
+    dependencies=[Depends(get_current_user)],
+)
+async def delete_event(id: str, db: Session = Depends(get_db)):
+    """
+    Delete a security event from PostgreSQL.
+    """
+    event = db.query(models.Event).filter(models.Event.id == id).first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+    db.delete(event)
+    db.commit()
+    return {"message": "Event deleted"}
