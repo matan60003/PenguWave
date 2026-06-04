@@ -243,7 +243,12 @@ async def login(login_data: schemas.LoginRequest, db: Session = Depends(get_db))
     # Create signed token with user id as the subject
     token = security.create_access_token(data={"sub": user.id, "role": user.role})
 
-    return {"token": token, "user": user}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "token": token,
+        "user": user,
+    }
 
 
 @app.post("/api/auth/logout", tags=["Authentication"])
