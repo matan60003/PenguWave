@@ -28,6 +28,15 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function getCurrentUser() {
+  const token = localStorage.getItem("token");
+  if (!token) throw new Error("No token");
+  const res = await fetchWithRetry(`${API_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
 export async function getEvents() {
   const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/events`, {
