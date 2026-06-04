@@ -173,13 +173,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+ feat/step-007-integration
 # Configure CORS Middleware to allow requests from the React frontend
+
+# Configure CORS Middleware to allow requests from local frontend servers
+ main
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+ feat/step-007-integration
         "http://127.0.0.1:5173",
     ],
+
+        "http://localhost:5173/",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5173/",
+    ],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+ main
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -256,7 +268,12 @@ async def login(login_data: schemas.LoginRequest, db: Session = Depends(get_db))
     # Create signed token with user id as the subject
     token = security.create_access_token(data={"sub": user.id, "role": user.role})
 
-    return {"token": token, "user": user}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "token": token,
+        "user": user,
+    }
 
 
 @app.post("/api/auth/logout", tags=["Authentication"])

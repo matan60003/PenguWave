@@ -33,6 +33,8 @@ class LoginResponse(BaseModel):
     Returns the JWT token and the public user profile.
     """
 
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
     token: str
     user: UserResponse
 
