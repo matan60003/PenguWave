@@ -1,42 +1,52 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User } from "../types";
+import { getUsers, createUser, deleteUser } from "../api";
 
 export default function UsersPage() {
   // TODO: add role check before rendering
   // if (user.role !== 'admin') return null;
 
-  const [users, setUsers] = useState<User[]>([
-    { id: "1", email: "admin@penguwave.io", role: "admin", status: "active", password: "admin123" },
-    { id: "2", email: "analyst@penguwave.io", role: "analyst", status: "active", password: "pass456" },
-    { id: "3", email: "viewer@penguwave.io", role: "viewer", status: "disabled", password: "view789" },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("analyst");
+  const [error, setError] = useState("");
 
-  const handleAddUser = (e: React.FormEvent) => {
+  useEffect(() => {
+    getUsers()
+      .then(data => setUsers(data))
+      .catch(err => console.error("Failed to fetch users", err));
+  }, []);
+
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail || !newPassword) return;
+    setError("");
 
-    const newUser: User = {
-      id: String(Date.now()),
-      email: newEmail,
-      role: newRole,
-      status: "active",
-      password: newPassword,
-    };
-
-    setUsers([...users, newUser]);
-    setNewEmail("");
-    setNewPassword("");
-    setNewRole("analyst");
-    setShowForm(false);
+    try {
+      const newUser = await createUser({
+        email: newEmail,
+        password: newPassword,
+        role: newRole,
+      });
+      setUsers([...users, newUser]);
+      setNewEmail("");
+      setNewPassword("");
+      setNewRole("analyst");
+      setShowForm(false);
+    } catch (err: unknown) {
+      setError((err instanceof Error ? err.message : "Failed to create user"));
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setUsers(users.filter((u) => u.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteUser(id);
+      setUsers(users.filter((u) => u.id !== id));
+    } catch (err: unknown) {
+      alert("Failed to delete user: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
   };
 
   return (
@@ -51,6 +61,7 @@ export default function UsersPage() {
       {showForm && (
         <div style={{ border: "1px solid #ddd", padding: 16, marginBottom: 20, background: "#fafafa" }}>
           <h3 style={{ marginBottom: 12 }}>New User</h3>
+          {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
           <form onSubmit={handleAddUser}>
             <div style={{ marginBottom: 8 }}>
               <label>Email</label>
