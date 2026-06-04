@@ -27,6 +27,9 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://pengu_user:pengu_pass@db:5432/pengu_db
+      MOCK_EVENTS_PATH: /app/data/mock_events.json
+    volumes:
+      - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy

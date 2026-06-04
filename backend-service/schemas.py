@@ -64,3 +64,20 @@ class MessageResponse(BaseModel):
     """
 
     message: str
+
+
+class EventResponse(BaseModel):
+    """
+    Representational response schema for a security event.
+    """
+
+    id: str
+    timestamp: str
+    severity: str
+    title: str
+    description: str
+    assetHostname: str
+    assetIp: str
+    sourceIp: str
+    tags: list[str]
+    userId: str

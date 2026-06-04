@@ -1,5 +1,7 @@
+import json
 import logging
 import uuid
+from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.exceptions import RequestValidationError
@@ -8,6 +10,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import SessionLocal, get_db, Base, engine
 import models
 import schemas
@@ -71,6 +74,57 @@ def require_role(allowed_roles: list[str]):
 
 
 require_admin = Depends(require_role(["admin"]))
+
+
+def load_mock_events() -> list[dict]:
+    """
+    Safely load events from the mock events JSON file.
+    Enforces validation checks against path traversal and file type constraints.
+    """
+    config_path = Path(settings.MOCK_EVENTS_PATH)
+
+    # Resolve the absolute path
+    if not config_path.is_absolute():
+        base_dir = Path(__file__).resolve().parent
+        resolved_path = (base_dir / config_path).resolve()
+    else:
+        resolved_path = config_path.resolve()
+
+    # Enforce strictly JSON suffix to mitigate arbitrary file reads
+    if resolved_path.suffix != ".json":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Security error: Invalid file type specified.",
+        )
+
+    # Safe path boundary validation (path traversal check)
+    # The path must reside inside the project workspace directory.
+    project_root = Path(__file__).resolve().parent.parent.resolve()
+    if project_root == Path("/"):
+        project_root = Path("/app").resolve()
+
+    if not str(resolved_path).startswith(str(project_root)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Security error: Path traversal detected.",
+        )
+
+    if not resolved_path.exists():
+        logger.error(f"Mock events file not found at: {resolved_path}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Security events file not found.",
+        )
+
+    try:
+        with open(resolved_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse mock events JSON file: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to parse mock events data.",
+        )
 
 
 @asynccontextmanager
@@ -315,3 +369,55 @@ async def delete_user(
     db.delete(user)
     db.commit()
     return {"message": "User deleted"}
+
+
+@app.get(
+    "/api/events",
+    response_model=list[schemas.EventResponse],
+    tags=["Events"],
+    dependencies=[Depends(get_current_user)],
+)
+async def get_events(
+    severity: str | None = None,
+    limit: int | None = None,
+    offset: int | None = None,
+):
+    """
+    Get the list of security events.
+    Supports optional severity filtering and limit/offset pagination.
+    """
+    events = load_mock_events()
+
+    if severity:
+        severity_upper = severity.upper()
+        events = [e for e in events if e.get("severity") == severity_upper]
+
+    if offset is not None:
+        events = events[offset:]
+    if limit is not None:
+        events = events[:limit]
+
+    return events
+
+
+@app.get(
+    "/api/events/{id}",
+    response_model=schemas.EventResponse,
+    tags=["Events"],
+    dependencies=[Depends(get_current_user)],
+)
+async def get_event(id: str):
+    """
+    Get a single security event by ID.
+    Raises 404 if the event is not found.
+    """
+    events = load_mock_events()
+    event = next((e for e in events if e.get("id") == id), None)
+
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
+        )
+
+    return event
