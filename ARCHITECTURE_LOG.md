@@ -56,6 +56,7 @@ Configure a continuous integration workflow running static checks, type validati
 
 ### 📁 Files Created/Modified
 *   `[NEW]` [.github/workflows/ci.yml](file:///c:/Users/matan/PenguWave/.github/workflows/ci.yml) — GitHub Actions workflow configuration.
+*   `[NEW]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Baseline FastAPI app entrypoint.
 *   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documentation updates.
 
 ### 🏗️ Architectural Decisions & "Why"
@@ -73,4 +74,9 @@ Configure a continuous integration workflow running static checks, type validati
 #### 3. Linting and Formatting Check
 *   **Decision:** Utilized `ruff` for both code style checking and lint enforcement.
 *   **Why (Efficiency):** `ruff` replaces multiple Python lint tools and runs extremely fast, keeping developer feedback loops tight and maintaining clean, standardized formatting across the codebase.
+
+#### 4. Baseline Scaffolding for Quality Gates
+*   **Decision:** Initialized a basic `main.py` containing a `/healthz` check endpoint rather than bypassing or silencing Mypy compiler checks.
+*   **Why:** Rather than muting checks (which hides potential bugs) or postponing type enforcement, scaffolding the entrypoint file immediately satisfies the compiler. The `/healthz` endpoint serves as a standard readiness probe for containerized environments.
+
 
