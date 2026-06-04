@@ -7,13 +7,15 @@ import EventsPage from "./pages/EventsPage";
 import UsersPage from "./pages/UsersPage";
 import NotFound from "./pages/NotFound";
 
+const LOGIN_DISMISSED_KEY = "login-dismissed";
+
 function App() {
   const [showLogin, setShowLogin] = useState(() => {
-    return !sessionStorage.getItem("login-dismissed");
+    return !sessionStorage.getItem(LOGIN_DISMISSED_KEY);
   });
 
   const handleCloseLogin = () => {
-    sessionStorage.setItem("login-dismissed", "true");
+    sessionStorage.setItem(LOGIN_DISMISSED_KEY, "true");
     setShowLogin(false);
   };
 

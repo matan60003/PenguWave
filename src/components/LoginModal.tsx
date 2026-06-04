@@ -4,19 +4,21 @@ interface LoginModalProps {
   onClose: () => void;
 }
 
+import { login } from "../api";
+
 export default function LoginModal({ onClose }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Login:", email, password);
 
-    import("../api").then(({ login }) => {
-      login(email, password).catch(() => {
-        // Backend not running — just close the modal
-      });
-    });
+    try {
+      await login(email, password);
+    } catch (err) {
+      // Backend not running or error — just close the modal
+    }
 
     onClose();
   };

@@ -93,7 +93,6 @@ export default function UsersPage() {
             <th>Email</th>
             <th>Role</th>
             <th>Status</th>
-            <th>Password</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -107,7 +106,6 @@ export default function UsersPage() {
                   {user.status}
                 </span>
               </td>
-              <td style={{ fontFamily: "monospace", fontSize: 13 }}>{user.password}</td>
               <td>
                 <a
                   href="#"

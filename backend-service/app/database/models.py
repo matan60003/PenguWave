@@ -29,7 +29,7 @@ class Event(Base):
     assetIp: Mapped[str] = mapped_column(String, nullable=False)
     sourceIp: Mapped[str] = mapped_column(String, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    userId: Mapped[str] = mapped_column(String, nullable=False)
+    userId: Mapped[str] = mapped_column(String, nullable=False, index=True)
 
     def __repr__(self) -> str:
         return (

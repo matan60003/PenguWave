@@ -50,12 +50,7 @@ export default function EventsPage() {
 
       {search && (
         <p>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: "Showing results for: <strong>" + search + "</strong>",
-            }}
-          />
-          {" "}({filtered.length} events)
+          Showing results for: <strong>{search}</strong> ({filtered.length} events)
         </p>
       )}
 
@@ -105,7 +100,7 @@ export default function EventsPage() {
             a.href = url;
             a.download = "penguwave_events_export.json";
             a.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
           }}
           style={{ fontSize: 13 }}
         >

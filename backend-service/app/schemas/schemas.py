@@ -20,6 +20,7 @@ class LoginResponse(BaseModel):
     token_type: Literal["bearer"] = "bearer"
     token: str
     user: UserResponse
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(BaseModel):
