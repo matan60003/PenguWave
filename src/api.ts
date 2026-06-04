@@ -1,11 +1,19 @@
+import { SecurityEvent } from "./types";
+
 const API_URL = "http://localhost:3001";
 
 async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 3, backoff = 300) {
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fetch(url, options);
-      if (!res.ok && res.status >= 500) {
-        throw new Error(`Server error ${res.status}`);
+      if (!res.ok) {
+        if (res.status >= 500) {
+          throw new Error(`Server error ${res.status}`);
+        } else {
+          // Client error, parse and throw (do not retry)
+          const errorData = await res.json().catch(() => ({}));
+          return Promise.reject(new Error(errorData.error || `Error ${res.status}`));
+        }
       }
       return res;
     } catch (err) {
@@ -70,4 +78,24 @@ export async function deleteUser(id: string) {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();
+}
+
+export async function createEvent(eventData: Omit<SecurityEvent, "id" | "timestamp">) {
+  const token = localStorage.getItem("token");
+  const res = await fetchWithRetry(`${API_URL}/api/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(eventData),
+  });
+  return res.json();
+}
+
+export async function deleteEvent(id: string) {
+  const token = localStorage.getItem("token");
+  const res = await fetchWithRetry(`${API_URL}/api/events/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
 }
