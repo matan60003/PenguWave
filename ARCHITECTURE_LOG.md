@@ -254,3 +254,43 @@ Create the authenticated `/api/events` and `/api/events/{id}` endpoints, parse t
 #### 4. List Pagination and Severity Filtering
 *   **Decision:** Exposed optional `severity` query parameters and `limit`/`offset` slicing controls on the `GET /api/events` route.
 *   **Why (Performance):** Serving all events sequentially wastes network bandwidth and degrades UI responsiveness. Offloading filtering and slicing to the backend provides tight, high-performance interactions.
+
+---
+
+## [2026-06-04] PostgreSQL Security Events Migration
+
+### 🎯 Step Goal
+Upgrade the application data persistence layer from local static file parsing (`mock_events.json`) to database persistence in PostgreSQL, with automatic bootstrapping and API event creation capabilities.
+
+### 📁 Files Created/Modified
+*   `[MODIFY]` [backend-service/models.py](file:///c:/Users/matan/PenguWave/backend-service/models.py) — Declared Event SQLAlchemy database model.
+*   `[MODIFY]` [backend-service/schemas.py](file:///c:/Users/matan/PenguWave/backend-service/schemas.py) — Created EventCreate and updated EventResponse Pydantic validation schemas.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Configured automatic seeding, GET events database query logic, and POST event creation + DELETE event cleanup endpoints.
+*   `[MODIFY]` [backend-service/tests/test_database_health.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_database_health.py) — Swapped testing ports.
+*   `[MODIFY]` [backend-service/tests/test_auth_flow.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_auth_flow.py) — Swapped testing ports.
+*   `[MODIFY]` [backend-service/tests/test_rbac_controls.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_rbac_controls.py) — Swapped testing ports.
+*   `[MODIFY]` [backend-service/tests/test_events_flow.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_events_flow.py) — Updated regression suite with POST and DELETE cleanup queries to verify database persistence and isolation.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Documented migration task completion.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Relational Event Schema (ORM Mapping)
+*   **Decision:** Declared `Event` model inheriting from declarative `Base`.
+*   **Why:** Normalizes the security events data layout, allowing full integration with indexable columns (ID, severity, timestamp) in the database.
+
+#### 2. Native JSON Tag Storage
+*   **Decision:** Utilized SQLAlchemy's `JSON` type for the event `tags` field.
+*   **Why:** Avoids table-join overhead for simple string list lookups (tags) while ensuring native serialization compatibility with the existing JSON payload schemas without modifications to the frontend interface.
+
+#### 3. Lifespan Bootstrapping & Auto-Seeding
+*   **Decision:** Configured automatic DB seeding from the local `mock_events.json` context only when the `events` table is empty.
+*   **Why:** Ensures zero-touch deployment bootstrapping, keeping the cluster in a ready-to-test state immediately after container boot.
+
+#### 4. Stable API Ordering for Pagination
+*   **Decision:** Added `order_by(models.Event.id)` constraint to query handlers.
+*   **Why:** Guarantees deterministic list index slicing and matches the original JSON file ordering expectations in test runs.
+
+#### 5. Test Endpoint Implementation
+*   **Decision:** Added `DELETE /api/events/{id}` handler.
+*   **Why:** Enables automated regression tests to perform full POST creation and DELETE cleanup, maintaining database isolation between test cycles.
+
