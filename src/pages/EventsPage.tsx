@@ -1,11 +1,14 @@
 import { useState } from "react";
 import mockEvents from "../../data/mock_events.json";
 import { SecurityEvent } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const events = mockEvents as SecurityEvent[];
 
@@ -46,6 +49,11 @@ export default function EventsPage() {
           <option value="MEDIUM">Medium</option>
           <option value="LOW">Low</option>
         </select>
+        {isAdmin && (
+          <button className="btn-primary" style={{ marginLeft: "auto", padding: "8px 16px" }}>
+            Create Event
+          </button>
+        )}
       </div>
 
       {search && (
@@ -62,6 +70,7 @@ export default function EventsPage() {
             <th>Asset</th>
             <th>Source IP</th>
             <th>Timestamp</th>
+            {isAdmin && <th>Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -84,6 +93,16 @@ export default function EventsPage() {
               <td style={{ fontSize: 13 }}>
                 {new Date(event.timestamp).toLocaleString()}
               </td>
+              {isAdmin && (
+                <td>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); alert("Delete event " + event.id); }}
+                    style={{ background: "transparent", color: "red", border: "1px solid red", padding: "4px 8px", cursor: "pointer" }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -126,12 +145,7 @@ export default function EventsPage() {
           <p>
             <strong>Description:</strong>
           </p>
-          {/* render rich text descriptions */}
-          <div
-            ref={(el) => {
-              if (el) el.innerHTML = selectedEvent.description;
-            }}
-          />
+          <div>{selectedEvent.description}</div>
           <p>
             <strong>Asset:</strong> {selectedEvent.assetHostname} ({selectedEvent.assetIp})
           </p>
