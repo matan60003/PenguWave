@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     Uses Pydantic Settings for strict typing and parsing.
     """
 
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
