@@ -80,9 +80,10 @@ Configure a continuous integration workflow running static checks, type validati
 *   **Decision:** Initialized a basic `main.py` containing a `/healthz` check endpoint rather than bypassing or silencing Mypy compiler checks.
 *   **Why:** Rather than muting checks (which hides potential bugs) or postponing type enforcement, scaffolding the entrypoint file immediately satisfies the compiler. The `/healthz` endpoint serves as a standard readiness probe for containerized environments.
 
-#### 5. SCA Vulnerability Patching
-*   **Decision:** Upgraded `pyjwt` to `2.13.0`, `fastapi` to `0.136.3`, and explicitly pinned `starlette` to `0.47.2` (resolving transitive dependency security warnings).
-*   **Why (Security):** Older versions of `pyjwt` and `starlette` contain critical security vulnerabilities (e.g. signature verification bypasses and DoS opportunities). Explicitly pinning `starlette` to a secure release (`>=0.47.2`) alongside a modern, compatible `fastapi` base guarantees the remediation of all reported vulnerabilities, securing our authentication mechanisms and HTTP routing pipeline.
+#### 5. SCA Vulnerability Patching and Package Alignment
+*   **Decision:** Upgraded `pyjwt` to `2.13.0`, `fastapi` to `0.136.3`, explicitly pinned `starlette` to `0.47.2`, and upgraded `pydantic` to `2.9.2` (resolving transitive dependency and compatibility conflicts).
+*   **Why (Security & Stability):** Older versions of `pyjwt` and `starlette` contain critical security vulnerabilities. Explicitly pinning `starlette` to a secure release (`>=0.47.2`) alongside a modern, compatible `fastapi` base guarantees the remediation of all reported vulnerabilities. Bumping `pydantic` to `2.9.2` satisfies FastAPI 0.136.3's minimum requirements without breaking `pydantic-settings` compatibility.
+
 
 
 

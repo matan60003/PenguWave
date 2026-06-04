@@ -3,7 +3,7 @@ starlette==0.47.2
 uvicorn==0.28.0
 sqlalchemy==2.0.28
 psycopg2-binary==2.9.9
-pydantic==2.6.4
+pydantic==2.9.2
 pydantic-settings==2.2.1
 passlib[bcrypt]==1.7.4
 pyjwt==2.13.0
