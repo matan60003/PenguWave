@@ -220,3 +220,37 @@ Build the JWT verification framework, implement role validation checks to restri
 #### 3. Protection Against Self-Lockout (Self-Deletion Guard)
 *   **Decision:** Implemented a validation condition inside `DELETE /api/users/{id}` that explicitly prevents the authenticated admin user from deleting their own user account.
 *   **Why (Resilience):** Protects system availability by preventing accidental administrative self-lockout, ensuring that at least one admin remains capable of orchestrating user access.
+
+---
+
+## [2026-06-04] STEP-006: Secure Events Parsing & Endpoint Routing
+
+### 🎯 Step Goal
+Create the authenticated `/api/events` and `/api/events/{id}` endpoints, parse the mock security event JSON data safely, implement directory traversal guards, and protect access using JWT authentication.
+
+### 📁 Files Created/Modified
+*   `[NEW]` [backend-service/tests/test_events_flow.py](file:///c:/Users/matan/PenguWave/backend-service/tests/test_events_flow.py) — Integration test suite for security event endpoints.
+*   `[MODIFY]` [docker-compose.yml](file:///c:/Users/matan/PenguWave/docker-compose.yml) — Mounted `./data` volume and added `MOCK_EVENTS_PATH` environment variable.
+*   `[MODIFY]` [backend-service/config.py](file:///c:/Users/matan/PenguWave/backend-service/config.py) — Added `MOCK_EVENTS_PATH` to configuration.
+*   `[MODIFY]` [backend-service/schemas.py](file:///c:/Users/matan/PenguWave/backend-service/schemas.py) — Declared `EventResponse` Pydantic schema.
+*   `[MODIFY]` [backend-service/main.py](file:///c:/Users/matan/PenguWave/backend-service/main.py) — Integrated `load_mock_events` with path traversal validations, and exposed `/api/events` and `/api/events/{id}` endpoints.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Progress updated to `85%`.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Logged architectural rationale.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Safe Resolving and Path Boundary Validations (Path Traversal Protection)
+*   **Decision:** Implemented strict directory traversal checks inside `load_mock_events` by checking if the absolute resolved path starts with the project workspace root directory.
+*   **Why (Security):** Mitigates Path Traversal (e.g., directory climbing via `../../etc/passwd`) and Local File Inclusion (LFI) vulnerabilities. Even if an environment or configuration setting is corrupted, the parser blocks access to files outside the defined project boundaries.
+
+#### 2. Strict File Extension Validation
+*   **Decision:** Enforced that the file path suffix must be exactly `.json`.
+*   **Why (Security):** Prevents the app from loading arbitrary configuration or binary files, maintaining strict boundary validation on the parsing engine.
+
+#### 3. Twelve-Factor Configuration & Shared Storage Volumes
+*   **Decision:** Stored the mock data path (`MOCK_EVENTS_PATH`) as a settings variable overridable via environment variables and mounted the host `./data` directory dynamically at `/app/data`.
+*   **Why (Resilience & Portability):** Decouples application code from environment setups. Prevents duplicating the 31KB mock JSON file in the container build context, ensuring that dev modifications immediately update inside the running container cluster.
+
+#### 4. List Pagination and Severity Filtering
+*   **Decision:** Exposed optional `severity` query parameters and `limit`/`offset` slicing controls on the `GET /api/events` route.
+*   **Why (Performance):** Serving all events sequentially wastes network bandwidth and degrades UI responsiveness. Offloading filtering and slicing to the backend provides tight, high-performance interactions.
