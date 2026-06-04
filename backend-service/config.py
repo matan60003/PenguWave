@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     """
 
     DATABASE_URL: str = ""
+    SECRET_KEY: str = "super_secret_pengu_key_change_me_in_production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     model_config = SettingsConfigDict(
         env_file=".env",
