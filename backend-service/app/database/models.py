@@ -1,21 +1,10 @@
 from sqlalchemy import String, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database import Base
+from app.database.database import Base
 
 
 class User(Base):
-    """
-    User database model representing application users.
-
-    Attributes:
-        id (str): Unique identifier (e.g., UUID or custom string).
-        email (str): Unique and indexed email address of the user.
-        hashed_password (str): Secure key-stretched bcrypt hash of the user's password.
-        role (str): Role designation for Authorization/RBAC (e.g., 'admin', 'analyst', 'user').
-        status (str): Status of the user account (e.g., 'active', 'suspended').
-    """
-
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
@@ -29,10 +18,6 @@ class User(Base):
 
 
 class Event(Base):
-    """
-    Event database model representing security events.
-    """
-
     __tablename__ = "events"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)

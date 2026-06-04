@@ -294,3 +294,36 @@ Upgrade the application data persistence layer from local static file parsing (`
 *   **Decision:** Added `DELETE /api/events/{id}` handler.
 *   **Why:** Enables automated regression tests to perform full POST creation and DELETE cleanup, maintaining database isolation between test cycles.
 
+---
+
+## [2026-06-04] STEP-007: Production Hardening & Automated Pipeline Triggers
+
+### 🎯 Step Goal
+Enforce structured workflow constraints on feature branch off-boarding, and implement robust operational hardening inside the backend and frontend network channels.
+
+### 📁 Files Created/Modified
+*   `[MODIFY]` [.antigravity/rules/aidd-workflow.mdc](file:///c:/Users/matan/PenguWave/.antigravity/rules/aidd-workflow.mdc) — Appended mandatory branch off-boarding automation rules.
+*   `[MODIFY]` [backend-service/app/main.py](file:///c:/Users/matan/PenguWave/backend-service/app/main.py) — Configured global `OperationalError`, `ValidationError`, and `PyJWTError` handling alongside structured JSON logging.
+*   `[MODIFY]` [src/api.ts](file:///c:/Users/matan/PenguWave/src/api.ts) — Implemented `fetchWithRetry` network exponential backoff strategy.
+*   `[MODIFY]` [src/App.tsx](file:///c:/Users/matan/PenguWave/src/App.tsx) — Remedied ESLint anti-pattern warning (`set-state-in-effect`).
+*   `[MODIFY]` [src/components/LoginModal.tsx](file:///c:/Users/matan/PenguWave/src/components/LoginModal.tsx) — Delegated network calls to centralized `api.ts`.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documented rationale.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. JSON Structured Logging
+*   **Decision:** Replaced standard textual logs with a `JSONLogFormatter`.
+*   **Why (Observability):** In production container environments (Docker, Kubernetes), plain text logs require complex regex parsing. Serializing logs natively as JSON objects allows aggregation services (like ELK or Datadog) to instantly index properties (timestamp, severity, message) out-of-the-box.
+
+#### 2. Specialized Exception Interceptors
+*   **Decision:** Caught `OperationalError` (database outages), `ValidationError` (schema violations), and `PyJWTError` at the FastAPI framework layer.
+*   **Why (Security & Stability):** Unhandled exceptions trigger raw 500 server crashes and leak Python stack traces containing database schemas or execution contexts to users. Wrapping these explicitly allows returning sanitized, standard JSON HTTP responses while logging the underlying technical detail internally.
+
+#### 3. Client-Side Exponential Backoff
+*   **Decision:** Constructed `fetchWithRetry` resolving temporary network anomalies.
+*   **Why (Resilience):** Cloud networks and container restarts are highly dynamic. Emitting an immediate failure upon a connection drop degrades UX. Exponential backoff gracefully delays retries (300ms, 600ms, 1200ms) granting the backend microservice time to recover without overwhelming it with a thundering-herd effect.
+
+#### 4. Workflow Branch Off-boarding Rule
+*   **Decision:** Added a new structural rule directing the agent to automatically push changes, checkout `main`, and pull upstream post-verification.
+*   **Why (Pipeline Automation):** Eliminates manual synchronization friction and guarantees that all verified developments natively integrate with the centralized GitHub origin instantly upon passing local checks.
+

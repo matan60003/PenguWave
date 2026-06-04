@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import LoginModal from "./components/LoginModal";
@@ -8,15 +8,9 @@ import UsersPage from "./pages/UsersPage";
 import NotFound from "./pages/NotFound";
 
 function App() {
-  const [showLogin, setShowLogin] = useState(false);
-
-  // Show login modal on first visit
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem("login-dismissed");
-    if (!dismissed) {
-      setShowLogin(true);
-    }
-  }, []);
+  const [showLogin, setShowLogin] = useState(() => {
+    return !sessionStorage.getItem("login-dismissed");
+  });
 
   const handleCloseLogin = () => {
     sessionStorage.setItem("login-dismissed", "true");

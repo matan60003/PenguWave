@@ -12,19 +12,11 @@ export default function LoginModal({ onClose }: LoginModalProps) {
     e.preventDefault();
     console.log("Login:", email, password);
 
-    // Try to call backend (will fail if no backend running)
-    fetch("http://localhost:3001/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        localStorage.setItem("token", data.token);
-      })
-      .catch(() => {
+    import("../api").then(({ login }) => {
+      login(email, password).catch(() => {
         // Backend not running — just close the modal
       });
+    });
 
     onClose();
   };
