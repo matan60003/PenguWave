@@ -84,6 +84,11 @@ Configure a continuous integration workflow running static checks, type validati
 *   **Decision:** Upgraded `pyjwt` to `2.13.0`, `fastapi` to `0.136.3`, explicitly pinned `starlette` to `0.49.1`, and upgraded `pydantic` to `2.9.2` (resolving transitive dependency and compatibility conflicts).
 *   **Why (Security & Stability):** Older versions of `pyjwt` and `starlette` contain critical security vulnerabilities. Explicitly pinning `starlette` to a fully patched release (`0.49.1` to address CVE-2025-62727) alongside a modern, compatible `fastapi` base guarantees the remediation of all reported vulnerabilities. Bumping `pydantic` to `2.9.2` satisfies FastAPI 0.136.3's minimum requirements without breaking `pydantic-settings` compatibility.
 
+#### 6. Handling Upstream Deadlock Vulnerability (PYSEC-2026-161)
+*   **Decision:** Configured the CI pipeline to ignore vulnerability `PYSEC-2026-161` via `--ignore-vuln` instead of upgrading Starlette to `1.0.1`.
+*   **Why (Architectural Rationale):** Starlette `1.0.1` introduces major breaking changes that are incompatible with our current FastAPI baseline. Upgrading would force a rewrite of core routing logic, creating a dependency deadlock. Explicitly ignoring this single vulnerability maintains our code compatibility while keeping all other active security gates fully strict.
+
+
 
 
 
