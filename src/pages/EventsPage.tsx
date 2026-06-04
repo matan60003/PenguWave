@@ -1,16 +1,34 @@
-import { useState } from "react";
-import mockEvents from "../../data/mock_events.json";
+import { useState, useEffect } from "react";
+import { getEvents, deleteEvent } from "../api";
 import { SecurityEvent } from "../types";
 import { useAuth } from "../context/AuthContext";
+import CreateEventModal from "../components/CreateEventModal";
 
 export default function EventsPage() {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [showModal, setShowModal] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const events = mockEvents as SecurityEvent[];
+  useEffect(() => {
+    getEvents()
+      .then(data => setEvents(data))
+      .catch(err => console.error("Failed to fetch events:", err));
+  }, []);
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteEvent(id);
+      setEvents(prev => prev.filter(evt => evt.id !== id));
+      if (selectedEvent?.id === id) setSelectedEvent(null);
+    } catch (err: unknown) {
+      alert("Failed to delete event: " + ((err instanceof Error && err.message) || "Unknown error"));
+    }
+  };
 
   const filtered = events.filter((e) => {
     const matchesSearch =
@@ -50,7 +68,7 @@ export default function EventsPage() {
           <option value="LOW">Low</option>
         </select>
         {isAdmin && (
-          <button className="btn-primary" style={{ marginLeft: "auto", padding: "8px 16px" }}>
+          <button className="btn-primary" onClick={() => setShowModal(true)} style={{ marginLeft: "auto", padding: "8px 16px" }}>
             Create Event
           </button>
         )}
@@ -96,7 +114,7 @@ export default function EventsPage() {
               {isAdmin && (
                 <td>
                   <button 
-                    onClick={(e) => { e.stopPropagation(); alert("Delete event " + event.id); }}
+                    onClick={(e) => handleDelete(event.id, e)}
                     style={{ background: "transparent", color: "red", border: "1px solid red", padding: "4px 8px", cursor: "pointer" }}
                   >
                     Delete
@@ -161,6 +179,16 @@ export default function EventsPage() {
           <h3>Raw Event Data</h3>
           <pre>{JSON.stringify(selectedEvent, null, 2)}</pre>
         </div>
+      )}
+
+      {showModal && (
+        <CreateEventModal
+          onClose={() => setShowModal(false)}
+          onCreated={(newEvent) => {
+            setEvents([newEvent, ...events]);
+            setShowModal(false);
+          }}
+        />
       )}
     </div>
   );

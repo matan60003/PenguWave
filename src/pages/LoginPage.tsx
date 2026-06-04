@@ -18,8 +18,8 @@ export default function LoginPage() {
       const data = await login(email, password);
       loginContext(data.token, data.user);
       navigate("/events");
-    } catch {
-      setError("Invalid email or password");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid email or password");
     }
   };
 
