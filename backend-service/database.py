@@ -1,7 +1,16 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from config import settings
+
+
+class Base(DeclarativeBase):
+    """
+    Declarative Base class for all database models.
+    """
+
+    pass
+
 
 # Create the SQLAlchemy engine with a robust connection pool configuration:
 # 1. pool_pre_ping=True: Executes a test query ('ping') before each checkout from the pool.
