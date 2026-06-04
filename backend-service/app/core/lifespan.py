@@ -1,0 +1,110 @@
+import json
+import logging
+from pathlib import Path
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, status
+from sqlalchemy import text
+
+from app.core.config import settings
+from app.database.database import SessionLocal, Base, engine
+from app.database import models
+from app.core import security
+
+logger = logging.getLogger("penguwave")
+
+
+def load_mock_events() -> list[dict]:
+    config_path = Path(settings.MOCK_EVENTS_PATH)
+
+    if not config_path.is_absolute():
+        # app/core/lifespan.py -> app/core -> app -> backend-service
+        base_dir = Path(__file__).resolve().parent
+        resolved_path = (base_dir / config_path).resolve()
+    else:
+        resolved_path = config_path.resolve()
+
+    if resolved_path.suffix != ".json":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Security error: Invalid file type specified.",
+        )
+
+    project_root = Path(__file__).resolve().parent.parent.parent.parent.resolve()
+    if project_root == Path("/"):
+        project_root = Path("/app").resolve()
+
+    if not str(resolved_path).startswith(str(project_root)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Security error: Path traversal detected.",
+        )
+
+    if not resolved_path.exists():
+        logger.error(f"Mock events file not found at: {resolved_path}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Security events file not found.",
+        )
+
+    try:
+        with open(resolved_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse mock events JSON file: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to parse mock events data.",
+        )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing database schema...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+            admin_email = "admin@penguwave.com"
+            existing_user = (
+                db.query(models.User).filter(models.User.email == admin_email).first()
+            )
+            if not existing_user:
+                logger.info(f"Seeding default admin user: {admin_email}")
+                default_admin = models.User(
+                    id="usr-admin",
+                    email=admin_email,
+                    hashed_password=security.hash_password("adminpassword"),
+                    role="admin",
+                    status="active",
+                )
+                db.add(default_admin)
+                db.commit()
+                logger.info("Default admin user successfully seeded.")
+
+            existing_event = db.query(models.Event).first()
+            if not existing_event:
+                logger.info("Seeding security events from JSON...")
+                try:
+                    events_data = load_mock_events()
+                    for evt in events_data:
+                        db_evt = models.Event(
+                            id=evt["id"],
+                            timestamp=evt["timestamp"],
+                            severity=evt["severity"],
+                            title=evt["title"],
+                            description=evt["description"],
+                            assetHostname=evt["assetHostname"],
+                            assetIp=evt["assetIp"],
+                            sourceIp=evt["sourceIp"],
+                            tags=evt["tags"],
+                            userId=evt["userId"],
+                        )
+                        db.add(db_evt)
+                    db.commit()
+                    logger.info("Security events successfully seeded.")
+                except Exception as ex_seed:
+                    logger.error(f"Failed to seed security events: {ex_seed}")
+        logger.info("Database bootstrap completed successfully.")
+    except Exception as e:
+        logger.critical(f"Database bootstrap failed: {e}")
+    yield

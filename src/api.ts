@@ -1,8 +1,24 @@
 const API_URL = "http://localhost:3001";
 
+async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 3, backoff = 300) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (!res.ok && res.status >= 500) {
+        throw new Error(`Server error ${res.status}`);
+      }
+      return res;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise(resolve => setTimeout(resolve, backoff * Math.pow(2, i)));
+    }
+  }
+  return fetch(url, options);
+}
+
 export async function login(email: string, password: string) {
   console.log("Login attempt:", email, password);
-  const res = await fetch(`${API_URL}/api/auth/login`, {
+  const res = await fetchWithRetry(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -14,7 +30,7 @@ export async function login(email: string, password: string) {
 
 export async function getEvents() {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/api/events`, {
+  const res = await fetchWithRetry(`${API_URL}/api/events`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();
@@ -22,7 +38,7 @@ export async function getEvents() {
 
 export async function getUsers() {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/api/users`, {
+  const res = await fetchWithRetry(`${API_URL}/api/users`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();
@@ -30,7 +46,7 @@ export async function getUsers() {
 
 export async function createUser(user: { email: string; password: string; role: string }) {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/api/users`, {
+  const res = await fetchWithRetry(`${API_URL}/api/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(user),
@@ -40,7 +56,7 @@ export async function createUser(user: { email: string; password: string; role: 
 
 export async function deleteUser(id: string) {
   const token = localStorage.getItem("token");
-  const res = await fetch(`${API_URL}/api/users/${id}`, {
+  const res = await fetchWithRetry(`${API_URL}/api/users/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });

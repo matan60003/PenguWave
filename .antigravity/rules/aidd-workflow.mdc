@@ -37,3 +37,10 @@ git commit -m "feat(backend): <short summary>
 
 - WHAT: <detailed bullet points of changes in Python files>
 - WHY: <the architectural or security reason for doing it this way>"
+
+## 5. Branch Off-Boarding and Workflow Transitions
+Upon completing any feature branch development and successfully passing all local validation checks (Ruff, Mypy, and integration tests), the agent MUST automatically perform the following Git operations sequentially before declaring the step complete:
+1. Stage and commit all remaining changes.
+2. Push the current active branch to the remote origin (`git push origin <branch-name>`).
+3. Checkout back to the `main` branch (`git checkout main`).
+4. Pull the latest upstream updates into main (`git pull origin main`).
