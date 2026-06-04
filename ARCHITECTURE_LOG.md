@@ -73,3 +73,4 @@ Configure a continuous integration workflow running static checks, type validati
 #### 3. Linting and Formatting Check
 *   **Decision:** Utilized `ruff` for both code style checking and lint enforcement.
 *   **Why (Efficiency):** `ruff` replaces multiple Python lint tools and runs extremely fast, keeping developer feedback loops tight and maintaining clean, standardized formatting across the codebase.
+
