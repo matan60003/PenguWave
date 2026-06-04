@@ -124,3 +124,38 @@ Initialize the core FastAPI application settings, configure a SQLAlchemy databas
 *   **Decision:** Enhanced `/healthz` to execute a baseline query on the database.
 *   **Why (Operational Best Practice):** Orchestration tools like Kubernetes or Docker Compose use health check endpoints to assess service readiness. If the backend is running but cannot reach the database, the service is functionally broken. A deep health probe prevents sending user traffic to unhealthy containers.
 
+---
+
+## [2026-06-04] STEP-003: User Database Model & Cryptographic Password Hashing
+
+### 🎯 Step Goal
+Define the SQLAlchemy User database model representing application users and set up cryptographically secure password hashing using the key-stretched bcrypt algorithm.
+
+### 📁 Files Created/Modified
+*   `[NEW]` [backend-service/models.py](file:///c:/Users/matan/PenguWave/backend-service/models.py) — User model definition using SQLAlchemy.
+*   `[NEW]` [backend-service/security.py](file:///c:/Users/matan/PenguWave/backend-service/security.py) — Cryptographic helpers for password hashing and verification.
+*   `[MODIFY]` [backend-service/database.py](file:///c:/Users/matan/PenguWave/backend-service/database.py) — Declare common Base class.
+*   `[MODIFY]` [progress.md](file:///c:/Users/matan/PenguWave/progress.md) — Progress tracker update.
+*   `[MODIFY]` [ARCHITECTURE_LOG.md](file:///c:/Users/matan/PenguWave/ARCHITECTURE_LOG.md) — Documentation update.
+
+### 🏗️ Architectural Decisions & "Why"
+
+#### 1. Decoupled Security Module
+*   **Decision:** Separated password hashing and verification logic into a standalone `security.py` file rather than placing it within the database model class or router controllers.
+*   **Why (SoC):** Implements Separation of Concerns. Placing cryptographic logic in a distinct utility module prevents code duplication, simplifies testing of hashing routines, and isolates core security configurations from database schemas.
+
+#### 2. Key-Stretched Hashing (Bcrypt)
+*   **Decision:** Utilized `passlib.context.CryptContext` with the `bcrypt` hashing algorithm.
+*   **Why (Security):** Plaintext passwords must **never** be stored. Cryptographic hashing converts passwords into irreversible digests. We chose `bcrypt` because it is a key-stretched algorithm designed to be slow. By intentionally consuming CPU time during verification, it defends against offline dictionary and brute-force attacks.
+
+#### 3. Automated Unique Salting
+*   **Decision:** Leveraged `pwd_context.hash(password)` which automatically generates and prepends a cryptographically strong, unique salt for every password hashed.
+*   **Why (Security):** Salting prevents attackers from using precomputed hashes (Rainbow Tables) to crack passwords. Even if two users choose the same plaintext password, their stored hashes will look completely different.
+
+#### 4. Constant-Time Verification
+*   **Decision:** Used `pwd_context.verify(plain_password, hashed_password)` for comparison checks.
+*   **Why (Security):** Prevents timing side-channel attacks. A simple string comparison `==` terminates as soon as a mismatch is found, leaking how many characters of the hash were guessed correctly. Constant-time verification takes the same duration regardless of when a mismatch occurs, shielding the system from attackers measuring response times.
+
+#### 5. Type-Annotated Database Mapping (SQLAlchemy 2.0)
+*   **Decision:** Defined model fields using `Mapped[type] = mapped_column(...)` pointing to a unified base declarative class.
+*   **Why (Quality):** Integrates type annotations with static code checkers (Mypy) to catch type mismatches at development time. Defining a common `Base` in `database.py` allows all subsequent feature models (e.g. `Event`) to register on a single metadata registry for migrations.
