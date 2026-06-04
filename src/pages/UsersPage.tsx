@@ -97,7 +97,6 @@ export default function UsersPage() {
               <select value={newRole} onChange={(e) => setNewRole(e.target.value)}>
                 <option value="admin">Admin</option>
                 <option value="analyst">Analyst</option>
-                <option value="viewer">Viewer</option>
               </select>
             </div>
             <button type="submit" className="btn-primary">

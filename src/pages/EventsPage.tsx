@@ -30,6 +30,13 @@ export default function EventsPage() {
     }
   };
 
+  const severityValue = (s: string) => {
+    if (s === "HIGH") return 3;
+    if (s === "MEDIUM") return 2;
+    if (s === "LOW") return 1;
+    return 0;
+  };
+
   const filtered = events.filter((e) => {
     const matchesSearch =
       e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -37,6 +44,10 @@ export default function EventsPage() {
       e.assetHostname.toLowerCase().includes(search.toLowerCase());
     const matchesSeverity = severityFilter === "ALL" || e.severity === severityFilter;
     return matchesSearch && matchesSeverity;
+  }).sort((a, b) => {
+    const sDiff = severityValue(b.severity) - severityValue(a.severity);
+    if (sDiff !== 0) return sDiff;
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
   const severityColor = (s: string) => {
