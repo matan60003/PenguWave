@@ -32,6 +32,12 @@ def get_current_user(
             detail="Authentication required",
         )
 
+    if user.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+
     return user
 
 
