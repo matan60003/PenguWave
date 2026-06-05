@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database.database import get_db
 from app.schemas import schemas
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, require_admin
 from app.services import event_service
 
 router = APIRouter(
@@ -22,7 +22,10 @@ async def get_events(
 
 
 @router.post(
-    "", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=schemas.EventResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_admin)],
 )
 async def create_event(
     event_data: schemas.EventCreate,
@@ -36,7 +39,11 @@ async def get_event(id: str, db: Session = Depends(get_db)):
     return event_service.get_event(id, db)
 
 
-@router.delete("/{id}", response_model=schemas.MessageResponse)
+@router.delete(
+    "/{id}",
+    response_model=schemas.MessageResponse,
+    dependencies=[Depends(require_admin)],
+)
 async def delete_event(id: str, db: Session = Depends(get_db)):
     event_service.delete_event(id, db)
     return {"message": "Event deleted"}
