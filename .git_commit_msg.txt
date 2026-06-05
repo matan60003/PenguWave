@@ -1,0 +1,12 @@
+feat(backend): implement lightweight background task scheduler engine
+
+WHAT:
+- Created `app/core/scheduler.py` with an `asyncio`-based heartbeat task that queries the database via `asyncio.to_thread()`.
+- Bound the background task strictly to the FastAPI application `lifespan` in `app/core/lifespan.py` via `asyncio.create_task()`.
+- Appended a new section detailing the background task architecture in `ARCHITECTURE.md`.
+- Marked STEP-008 as completed in `progress.md`.
+
+WHY:
+- Provides a dedicated background process (heartbeat) that runs continuously without blocking incoming API HTTP requests.
+- Utilizing native `asyncio` avoids heavy external dependencies like Celery or Redis, keeping the architecture slim and manageable.
+- Ensures the background processes safely boot up and gracefully tear down tightly coupled to the web server's lifecycle.

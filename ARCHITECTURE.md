@@ -138,3 +138,14 @@ This section explains how we package and run our application reliably across dif
   - **What it is:** A platform that packages software into standardized, isolated units called "containers." A container includes everything the software needs to run (code, runtime, system tools, libraries) so it behaves identically on any computer.
   - **How we use it:** We wrap our FastAPI backend server and our PostgreSQL database in Docker containers (often orchestrated via Docker Compose). Instead of forcing every developer to manually install Python, PostgreSQL, and all the specific dependencies on their personal laptops, they simply run a Docker command to spin up the entire backend stack instantly.
   - **Why it matters:** It completely eliminates the "it works on my machine" problem. By containerizing the server and DB, we guarantee that the exact same environment running locally will be the one running in production. It makes onboarding new developers incredibly fast, isolates our dependencies to prevent system conflicts, and ensures our deployments are highly predictable and reliable.
+
+---
+
+## 9. Background Task Scheduling (The Heartbeat)
+
+This covers how we run periodic maintenance, telemetry gathering, and asynchronous workflows without blocking the main web server.
+
+- **Native Asyncio Event Loop:**
+  - **What it is:** Python's built-in asynchronous I/O framework that powers FastAPI under the hood.
+  - **How we use it:** Instead of deploying heavy external task queues like Celery or Redis, we bind our background tasks (like the heartbeat engine) directly to FastAPI's `lifespan` context manager using `asyncio.create_task()`.
+  - **Why it matters:** It keeps our architecture exceptionally lightweight while perfectly guaranteeing that background jobs spin up safely when the server starts and shut down gracefully when the server stops, all without blocking incoming HTTP requests.
