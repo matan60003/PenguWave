@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from sqlalchemy import text
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.database.database import SessionLocal, Base, engine
 from app.database import models
 from app.core import security
+from app.core.scheduler import heartbeat_task
 
 logger = logging.getLogger("penguwave")
 
@@ -107,4 +109,16 @@ async def lifespan(app: FastAPI):
         logger.info("Database bootstrap completed successfully.")
     except Exception as e:
         logger.critical(f"Database bootstrap failed: {e}")
+
+    logger.info("Starting background scheduler...")
+    scheduler_task = asyncio.create_task(heartbeat_task())
+
     yield
+
+    logger.info("Shutting down background scheduler...")
+    scheduler_task.cancel()
+    try:
+        await scheduler_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("Background scheduler shut down completely.")
