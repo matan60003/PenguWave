@@ -11,14 +11,15 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[schemas.EventResponse])
+@router.get("", response_model=schemas.PaginatedEventsResponse)
 async def get_events(
     severity: str | None = None,
+    search: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
     db: Session = Depends(get_db),
 ):
-    return event_service.get_events(severity, limit, offset, db)
+    return event_service.get_events(severity, search, limit, offset, db)
 
 
 @router.post(

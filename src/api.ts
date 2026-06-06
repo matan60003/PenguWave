@@ -45,9 +45,14 @@ export async function getCurrentUser() {
   return res.json();
 }
 
-export async function getEvents() {
+export async function getEvents(page = 1, limit = 25, search = "", severity = "ALL") {
   const token = localStorage.getItem("token");
-  const res = await fetchWithRetry(`${API_URL}/api/events`, {
+  const offset = (page - 1) * limit;
+  const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
+  if (search) params.append("search", search);
+  if (severity !== "ALL") params.append("severity", severity);
+  
+  const res = await fetchWithRetry(`${API_URL}/api/events?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();

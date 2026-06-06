@@ -63,3 +63,8 @@ class EventResponse(BaseModel):
     userId: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaginatedEventsResponse(BaseModel):
+    data: list[EventResponse]
+    total: int

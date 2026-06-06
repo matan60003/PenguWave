@@ -33,7 +33,7 @@ def run_tests():
     if r.status_code != 200:
         log(f"FAIL: Failed to list initial events ({r.status_code}): {r.text}")
         sys.exit(1)
-    initial_events = r.json()
+    initial_events = r.json().get("data", [])
     initial_count = len(initial_events)
     log(f"PASS: Listed {initial_count} initial events.")
 
@@ -85,7 +85,7 @@ def run_tests():
     # 4. Verify count increased by 1
     log("Verifying events count increased...")
     r = requests.get(f"{BASE_URL}/api/events", headers=headers)
-    current_events = r.json()
+    current_events = r.json().get("data", [])
     if len(current_events) != initial_count + 1:
         log(f"FAIL: Expected {initial_count + 1} events, got {len(current_events)}")
         sys.exit(1)
@@ -112,7 +112,7 @@ def run_tests():
     if r.status_code != 200:
         log(f"FAIL: Severity filtering failed ({r.status_code}): {r.text}")
         sys.exit(1)
-    critical_events = r.json()
+    critical_events = r.json().get("data", [])
     if len(critical_events) != 1 or critical_events[0]["id"] != created_id:
         log(f"FAIL: Expected exactly 1 CRITICAL event, got {len(critical_events)}")
         sys.exit(1)
@@ -124,7 +124,7 @@ def run_tests():
     if r.status_code != 200:
         log(f"FAIL: Pagination failed ({r.status_code}): {r.text}")
         sys.exit(1)
-    paginated_events = r.json()
+    paginated_events = r.json().get("data", [])
     if len(paginated_events) != 5:
         log(f"FAIL: Expected exactly 5 events, got {len(paginated_events)}")
         sys.exit(1)
@@ -141,7 +141,7 @@ def run_tests():
     # 9. Verify count is restored
     log("Verifying events count restored to initial size...")
     r = requests.get(f"{BASE_URL}/api/events", headers=headers)
-    final_events = r.json()
+    final_events = r.json().get("data", [])
     if len(final_events) != initial_count:
         log(
             f"FAIL: Expected count to return to {initial_count}, got {len(final_events)}"

@@ -9,15 +9,24 @@ export default function EventsPage() {
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
   const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const limit = 25;
 
   useEffect(() => {
-    getEvents()
-      .then(data => setEvents(data))
-      .catch(err => console.error("Failed to fetch events:", err));
-  }, []);
+    const timeout = setTimeout(() => {
+      getEvents(page, limit, search, severityFilter)
+        .then(res => {
+          setEvents(res.data);
+          setTotal(res.total);
+        })
+        .catch(err => console.error("Failed to fetch events:", err));
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [page, search, severityFilter]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -29,26 +38,6 @@ export default function EventsPage() {
       alert("Failed to delete event: " + ((err instanceof Error && err.message) || "Unknown error"));
     }
   };
-
-  const severityValue = (s: string) => {
-    if (s === "HIGH") return 3;
-    if (s === "MEDIUM") return 2;
-    if (s === "LOW") return 1;
-    return 0;
-  };
-
-  const filtered = events.filter((e) => {
-    const matchesSearch =
-      e.title.toLowerCase().includes(search.toLowerCase()) ||
-      e.description.toLowerCase().includes(search.toLowerCase()) ||
-      e.assetHostname.toLowerCase().includes(search.toLowerCase());
-    const matchesSeverity = severityFilter === "ALL" || e.severity === severityFilter;
-    return matchesSearch && matchesSeverity;
-  }).sort((a, b) => {
-    const sDiff = severityValue(b.severity) - severityValue(a.severity);
-    if (sDiff !== 0) return sDiff;
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
 
   const severityColor = (s: string) => {
     if (s === "HIGH") return "red";
@@ -65,12 +54,12 @@ export default function EventsPage() {
           type="text"
           placeholder="Search events..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           style={{ width: "100%", maxWidth: 400 }}
         />
         <select
           value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value)}
+          onChange={(e) => { setSeverityFilter(e.target.value); setPage(1); }}
           style={{ width: 140 }}
         >
           <option value="ALL">All Severities</option>
@@ -85,12 +74,6 @@ export default function EventsPage() {
         )}
       </div>
 
-      {search && (
-        <p>
-          Showing results for: <strong>{search}</strong> ({filtered.length} events)
-        </p>
-      )}
-
       <table>
         <thead>
           <tr>
@@ -103,7 +86,7 @@ export default function EventsPage() {
           </tr>
         </thead>
         <tbody>
-          {filtered.map((event) => (
+          {events.map((event) => (
             <tr
               key={event.id}
               onClick={() => setSelectedEvent(event)}
@@ -137,12 +120,33 @@ export default function EventsPage() {
         </tbody>
       </table>
 
-      {filtered.length === 0 && <p style={{ color: "#999" }}>No events found.</p>}
+      {events.length === 0 && <p style={{ color: "#999" }}>No events found.</p>}
+
+      <div style={{ marginTop: 16, display: "flex", gap: 8, alignItems: "center" }}>
+        <button 
+          disabled={page === 1} 
+          onClick={() => setPage(page - 1)}
+          style={{ padding: "4px 8px" }}
+        >
+          Previous
+        </button>
+        <span style={{ fontSize: 14 }}>Page {page} of {Math.ceil(total / limit) || 1}</span>
+        <button 
+          disabled={page >= Math.ceil(total / limit) || total === 0} 
+          onClick={() => setPage(page + 1)}
+          style={{ padding: "4px 8px" }}
+        >
+          Next
+        </button>
+        <span style={{ marginLeft: "auto", color: "#666", fontSize: 13 }}>
+          Total Events: {total}
+        </span>
+      </div>
 
       <div style={{ marginTop: 12 }}>
         <button
           onClick={() => {
-            const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: "application/json" });
+            const blob = new Blob([JSON.stringify(events, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
@@ -152,7 +156,7 @@ export default function EventsPage() {
           }}
           style={{ fontSize: 13 }}
         >
-          Export Events (JSON)
+          Export Current Page (JSON)
         </button>
       </div>
 
@@ -196,7 +200,11 @@ export default function EventsPage() {
         <CreateEventModal
           onClose={() => setShowModal(false)}
           onCreated={(newEvent) => {
-            setEvents([newEvent, ...events]);
+            // Ideally re-fetch or optimistically add
+            getEvents(page, limit, search, severityFilter).then(res => {
+              setEvents(res.data);
+              setTotal(res.total);
+            });
             setShowModal(false);
           }}
         />
