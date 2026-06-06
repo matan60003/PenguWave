@@ -5,18 +5,36 @@ from app.database import models
 from app.schemas import schemas
 
 
+from sqlalchemy import or_
+
+
 def get_events(
-    severity: str | None, limit: int | None, offset: int | None, db: Session
+    severity: str | None,
+    search: str | None,
+    limit: int | None,
+    offset: int | None,
+    db: Session,
 ):
     query = db.query(models.Event)
     if severity:
         query = query.filter(models.Event.severity == severity.upper())
-    query = query.order_by(models.Event.id)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Event.title.ilike(search_filter),
+                models.Event.description.ilike(search_filter),
+                models.Event.assetHostname.ilike(search_filter),
+            )
+        )
+    total = query.count()
+    query = query.order_by(models.Event.timestamp.desc(), models.Event.id)
     if offset is not None:
         query = query.offset(offset)
     if limit is not None:
         query = query.limit(limit)
-    return query.all()
+    events = query.all()
+    return {"data": events, "total": total}
 
 
 def create_event(event_data: schemas.EventCreate, db: Session):
