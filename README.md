@@ -47,8 +47,9 @@ docker-compose up --build -d
 *   *Note: Upon first boot, the system automatically runs schema migrations and seeds the database with default data and a mock events JSON file.*
 
 ### 2. Start the Frontend (Localhost)
-Open a second terminal, install the dependencies, and start the Vite dev server:
+Open a second terminal, navigate to the frontend directory, install the dependencies, and start the Vite dev server:
 ```bash
+cd frontend
 npm install
 npm run dev
 ```

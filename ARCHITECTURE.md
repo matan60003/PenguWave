@@ -81,6 +81,11 @@ This relates to how we handle the core security event logs inside our system.
   - **How we use it:** We created a B-Tree index on `Event.userId` in the PostgreSQL database.
   - **Why it matters:** As the system scales to millions of events, searching for one specific user's events could take seconds. By indexing the column, PostgreSQL maintains an organized lookup tree, allowing it to find records in milliseconds, keeping the UI lightning fast.
 
+- **Server-Side Pagination & Database Filtering:**
+  - **What it is:** The process of breaking massive datasets into smaller, manageable "pages" directly at the database level.
+  - **How we use it:** Instead of the frontend requesting all events and filtering them in React, the backend uses SQLAlchemy's `limit`, `offset`, and `ilike` operators. The `GET /api/events` endpoint only retrieves the exact 25 rows requested and filters search terms (like an IP or title) directly inside PostgreSQL.
+  - **Why it matters:** As the background pipeline ingests thousands of events, sending all of them to the frontend would crash the user's browser and consume massive bandwidth. Server-side pagination guarantees that the UI remains blazing fast and memory-efficient regardless of whether the database holds 100 or 1,000,000 events.
+
 ---
 
 ## 6. Frontend (The User Interface)
@@ -149,3 +154,8 @@ This covers how we run periodic maintenance, telemetry gathering, and asynchrono
   - **What it is:** Python's built-in asynchronous I/O framework that powers FastAPI under the hood.
   - **How we use it:** Instead of deploying heavy external task queues like Celery or Redis, we bind our background tasks (like the heartbeat engine) directly to FastAPI's `lifespan` context manager using `asyncio.create_task()`.
   - **Why it matters:** It keeps our architecture exceptionally lightweight while perfectly guaranteeing that background jobs spin up safely when the server starts and shut down gracefully when the server stops, all without blocking incoming HTTP requests.
+
+- **External API Ingestion (`httpx`):**
+  - **What it is:** An asynchronous HTTP client for Python.
+  - **How we use it:** Inside our background scheduler, we use `httpx.AsyncClient()` to routinely fetch the US Government's CISA KEV (Known Exploited Vulnerabilities) JSON feed.
+  - **Why it matters:** Unlike the synchronous `requests` library, `httpx` allows our background task to wait for the CISA servers to respond without freezing the rest of the FastAPI application. This gives PenguWave real-time threat intelligence ingestion under the hood.
