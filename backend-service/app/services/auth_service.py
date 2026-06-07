@@ -1,23 +1,30 @@
-from sqlalchemy.orm import Session
 from app.core.exceptions import AuthError
-from app.database import models
 from app.schemas import schemas
 from app.core import security
+from app.database.repositories import UserRepository
 
 
-def authenticate_user(login_data: schemas.LoginRequest, db: Session) -> dict:
-    user = db.query(models.User).filter(models.User.email == login_data.email).first()
+class AuthService:
+    def __init__(self, user_repo: UserRepository):
+        self.user_repo = user_repo
 
-    if not user or not security.verify_password(
-        login_data.password, user.hashed_password
-    ):
-        raise AuthError("Invalid email or password")
+    def authenticate_user(
+        self, login_data: schemas.LoginRequest
+    ) -> schemas.LoginResponse:
+        user = self.user_repo.get_by_email(login_data.email)
 
-    token = security.create_access_token(data={"sub": user.id, "role": user.role})
+        if not user or not security.verify_password(
+            login_data.password, user.hashed_password
+        ):
+            raise AuthError("Invalid email or password")
 
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "token": token,
-        "user": user,
-    }
+        token = security.create_access_token(data={"sub": user.id, "role": user.role})
+
+        user_response = schemas.UserResponse.model_validate(user)
+
+        return schemas.LoginResponse(
+            access_token=token,
+            token_type="bearer",
+            token=token,
+            user=user_response,
+        )
