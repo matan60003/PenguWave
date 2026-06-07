@@ -1,11 +1,18 @@
 import { SecurityEvent } from "./types";
 
-const API_URL = "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 3, backoff = 300) {
+  const token = localStorage.getItem("token");
+  const headers = {
+    ...options.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  const config = { ...options, headers };
+
   for (let i = 0; i < retries; i++) {
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, config);
       if (!res.ok) {
         if (res.status >= 500) {
           throw new Error(`Server error ${res.status}`);
@@ -21,7 +28,7 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
       await new Promise(resolve => setTimeout(resolve, backoff * Math.pow(2, i)));
     }
   }
-  return fetch(url, options);
+  return fetch(url, config);
 }
 
 export async function login(email: string, password: string) {
@@ -37,70 +44,54 @@ export async function login(email: string, password: string) {
 }
 
 export async function getCurrentUser() {
-  const token = localStorage.getItem("token");
-  if (!token) throw new Error("No token");
-  const res = await fetchWithRetry(`${API_URL}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await fetchWithRetry(`${API_URL}/api/auth/me`);
   return res.json();
 }
 
 export async function getEvents(page = 1, limit = 25, search = "", severity = "ALL") {
-  const token = localStorage.getItem("token");
   const offset = (page - 1) * limit;
   const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
   if (search) params.append("search", search);
   if (severity !== "ALL") params.append("severity", severity);
   
-  const res = await fetchWithRetry(`${API_URL}/api/events?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await fetchWithRetry(`${API_URL}/api/events?${params.toString()}`);
   return res.json();
 }
 
 export async function getUsers() {
-  const token = localStorage.getItem("token");
-  const res = await fetchWithRetry(`${API_URL}/api/users`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await fetchWithRetry(`${API_URL}/api/users`);
   return res.json();
 }
 
 export async function createUser(user: { email: string; password: string; role: string }) {
-  const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/users`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(user),
   });
   return res.json();
 }
 
 export async function deleteUser(id: string) {
-  const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/users/${id}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();
 }
 
 export async function createEvent(eventData: Omit<SecurityEvent, "id">) {
-  const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/events`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(eventData),
   });
   return res.json();
 }
 
 export async function deleteEvent(id: string) {
-  const token = localStorage.getItem("token");
   const res = await fetchWithRetry(`${API_URL}/api/events/${id}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 204) return null;
-  return res.json().catch(() => null);
+  return res.json();
 }

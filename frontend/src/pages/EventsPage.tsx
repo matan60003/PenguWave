@@ -199,7 +199,7 @@ export default function EventsPage() {
       {showModal && (
         <CreateEventModal
           onClose={() => setShowModal(false)}
-          onCreated={(newEvent) => {
+          onCreated={() => {
             // Ideally re-fetch or optimistically add
             getEvents(page, limit, search, severityFilter).then(res => {
               setEvents(res.data);

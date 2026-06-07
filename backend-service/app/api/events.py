@@ -19,6 +19,8 @@ async def get_events(
     offset: int | None = None,
     db: Session = Depends(get_db),
 ):
+    if limit is not None:
+        limit = min(limit, 100)
     return event_service.get_events(severity, search, limit, offset, db)
 
 

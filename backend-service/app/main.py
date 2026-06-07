@@ -13,6 +13,12 @@ import json
 from app.core.lifespan import lifespan
 from app.api import auth, users, events
 from app.database.database import get_db
+from app.core.exceptions import (
+    NotFoundError,
+    AuthError,
+    ValidationError as DomainValidationError,
+    PermissionError,
+)
 
 
 class JSONLogFormatter(logging.Formatter):
@@ -104,6 +110,38 @@ async def jwt_exception_handler(request, exc: jwt.exceptions.PyJWTError):
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content={"error": "Invalid authentication token"},
+    )
+
+
+@app.exception_handler(NotFoundError)
+async def not_found_exception_handler(request, exc: NotFoundError):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"error": exc.detail},
+    )
+
+
+@app.exception_handler(AuthError)
+async def auth_exception_handler(request, exc: AuthError):
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"error": exc.detail},
+    )
+
+
+@app.exception_handler(DomainValidationError)
+async def domain_validation_exception_handler(request, exc: DomainValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"error": exc.detail},
+    )
+
+
+@app.exception_handler(PermissionError)
+async def permission_exception_handler(request, exc: PermissionError):
+    return JSONResponse(
+        status_code=status.HTTP_403_FORBIDDEN,
+        content={"error": exc.detail},
     )
 
 

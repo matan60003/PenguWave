@@ -18,18 +18,18 @@ PenguWave/
 ├── backend-service/              # FastAPI Backend Server
 │   ├── app/
 │   │   ├── api/                  # Routing Layer: (e.g., events.py, auth.py) HTTP endpoints and dependencies
-│   │   ├── core/                 # System Core: (e.g., lifespan.py, scheduler.py) Auth, JWT, asyncio loop
+│   │   ├── core/                 # System Core: (e.g., lifespan.py, exceptions.py) Auth, Domain Exceptions
 │   │   ├── database/             # Data Access Layer: (e.g., models.py, database.py) SQLAlchemy ORM setup
 │   │   ├── schemas/              # Validation Layer: (e.g., schemas.py) Pydantic schemas for serialization
-│   │   └── services/             # Business Logic Layer: (e.g., event_service.py) Core CRUD operations
+│   │   └── services/             # Business Logic Layer: (e.g., event_service.py) Core CRUD operations, throws domain exceptions
 │   └── tests/                    # Automated Pytest suite (integration & unit)
 └── docker-compose.yml            # Infrastructure orchestration
 ```
 
 ### Layer Responsibilities in Practice
-*   **`app/api` (Routers):** Exclusively handles HTTP request parsing. For example, in `events.py`, the endpoint simply receives the request and delegates the heavy lifting to the service layer.
+*   **`app/api` (Routers):** Exclusively handles HTTP request parsing and translating domain exceptions to HTTP errors via global handlers.
 *   **`app/schemas` (Pydantic):** Defined in `schemas.py`. Enforces data shape. If the frontend sends an invalid string for an email, Pydantic throws a `422 Unprocessable Entity` before the logic even runs.
-*   **`app/services` (Business Logic):** Defined in `event_service.py`. Contains the actual algorithmic work, executing pure Python and SQLAlchemy operations independently of the HTTP layer.
+*   **`app/services` (Business Logic):** Defined in `event_service.py`. Contains the actual algorithmic work. Completely decoupled from HTTP concerns (FastAPI), raising pure Python domain exceptions (e.g., `NotFoundError`).
 
 ---
 

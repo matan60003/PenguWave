@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from app.core.exceptions import NotFoundError
 from app.database import models
 from app.schemas import schemas
 
@@ -60,19 +60,13 @@ def create_event(event_data: schemas.EventCreate, db: Session):
 def get_event(id: str, db: Session):
     event = db.query(models.Event).filter(models.Event.id == id).first()
     if not event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Event not found",
-        )
+        raise NotFoundError("Event not found")
     return event
 
 
 def delete_event(id: str, db: Session):
     event = db.query(models.Event).filter(models.Event.id == id).first()
     if not event:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Event not found",
-        )
+        raise NotFoundError("Event not found")
     db.delete(event)
     db.commit()
