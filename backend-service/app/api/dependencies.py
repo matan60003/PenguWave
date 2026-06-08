@@ -1,18 +1,22 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.database.database import get_db
 from app.database.models import User
+from app.database.repositories import UserRepository
 from app.core import security
 
 security_scheme = HTTPBearer()
 
 
+def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    return UserRepository(db)
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    db: AsyncSession = Depends(get_db),
+    user_repo: UserRepository = Depends(get_user_repository),
 ) -> User:
     token = credentials.credentials
     payload = security.decode_access_token(token)
@@ -25,8 +29,7 @@ async def get_current_user(
         )
 
     user_id = payload["sub"]
-    result = await db.execute(select(User).filter(User.id == user_id))
-    user = result.scalars().first()
+    user = await user_repo.get_by_id(user_id)
 
     if not user:
         raise HTTPException(

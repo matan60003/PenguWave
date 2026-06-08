@@ -24,15 +24,18 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
     try:
         async with SessionLocal() as db:
             added_count = 0
+            
+            titles = [vuln.get("cveID", "Unknown CVE") for vuln in vulnerabilities]
+            
+            result = await db.execute(
+                select(models.Event.title).filter(models.Event.title.in_(titles))
+            )
+            existing_titles = set(result.scalars().all())
+
             for vuln in vulnerabilities:
                 title = vuln.get("cveID", "Unknown CVE")
 
-                # Deduplication: Check if event with this title exists
-                result = await db.execute(
-                    select(models.Event).filter(models.Event.title == title)
-                )
-                existing = result.scalars().first()
-                if existing:
+                if title in existing_titles:
                     continue
 
                 description = vuln.get("shortDescription", "No description provided.")

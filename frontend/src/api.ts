@@ -32,7 +32,6 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
 }
 
 export async function login(email: string, password: string) {
-  console.log("Login attempt:", email, password);
   const res = await fetchWithRetry(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
-from sqlalchemy import String, JSON
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, JSON, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
 
@@ -12,6 +12,8 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     role: Mapped[str] = mapped_column(String, nullable=False, default="user")
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+
+    events: Mapped[list["Event"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id!r}, email={self.email!r}, role={self.role!r})>"
@@ -29,7 +31,9 @@ class Event(Base):
     assetIp: Mapped[str] = mapped_column(String, nullable=False)
     sourceIp: Mapped[str] = mapped_column(String, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    userId: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    userId: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    user: Mapped["User"] = relationship(back_populates="events")
 
     def __repr__(self) -> str:
         return (
