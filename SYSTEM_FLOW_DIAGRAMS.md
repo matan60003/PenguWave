@@ -20,18 +20,18 @@ sequenceDiagram
 
     Browser->>Router: GET /api/events (with JWT in Header)
     
-    rect rgb(30, 30, 30)
+    rect rgba(233, 206, 206, 1)
     Note over Router,Auth: 1. Security Layer
     Router->>Auth: Verify Token & User Status
     Auth-->>Router: Valid User Object
     end
 
-    rect rgb(30, 50, 70)
+    rect rgba(200, 206, 213, 1)
     Note over Router,Service: 2. Routing Layer
     Router->>Service: get_events(limit, offset, search)
     end
     
-    rect rgb(50, 70, 50)
+    rect rgba(194, 208, 194, 1)
     Note over Service,Repo: 3. Business & Data Layer
     Service->>Repo: get_events(limit, offset, search)
     Repo->>DB: Execute SQLAlchemy select(...) with limit/offset
@@ -62,7 +62,7 @@ sequenceDiagram
     Lifespan->>Scheduler: Start Task on App Boot (asyncio)
     
     loop Every 5 Minutes
-        rect rgb(70, 50, 30)
+        rect rgba(161, 146, 132, 1)
         Note over Scheduler,DB: Concurrency Control
         Scheduler->>DB: SELECT pg_try_advisory_lock(...)
         DB-->>Scheduler: Lock Acquired (Leader Node)
@@ -72,7 +72,7 @@ sequenceDiagram
         CISA-->>Scheduler: Live JSON Threat Data
         Scheduler->>Service: bulk_ingest_events(events_data)
         
-        rect rgb(50, 30, 70)
+        rect rgba(173, 162, 185, 1)
         Note over Service,Repo: Algorithmic Deduplication
         Service->>Repo: get_existing_titles(incoming_titles)
         Repo->>DB: SELECT title FROM events WHERE title IN (...)
@@ -110,7 +110,7 @@ sequenceDiagram
     Browser->>Router: POST /api/auth/login (email, password)
     Router->>Service: authenticate_user(email, password)
     
-    rect rgb(30, 50, 70)
+    rect rgba(149, 166, 184, 1)
     Note over Service,DB: Database Lookup
     Service->>Repo: get_by_email(email)
     Repo->>DB: SELECT * FROM users WHERE email = ...
@@ -118,7 +118,7 @@ sequenceDiagram
     Repo-->>Service: User Object
     end
     
-    rect rgb(70, 30, 30)
+    rect rgba(203, 192, 193, 1)
     Note over Service: Cryptographic Verification
     Service->>Service: bcrypt.verify(plain_password, hashed_password)
     end
