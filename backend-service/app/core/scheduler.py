@@ -5,7 +5,7 @@ import uuid
 import httpx
 from datetime import datetime, timezone
 from sqlalchemy import text, select
-from app.database.database import SessionLocal
+from app.database.database import SessionLocal, engine
 from app.database import models
 
 logger = logging.getLogger("penguwave")
@@ -77,6 +77,25 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
 
 
 async def _fetch_and_ingest_cisa_data():
+    lock_db = None
+    lock_acquired = False
+    
+    # Try to acquire an advisory lock to prevent multiple workers from running this simultaneously
+    if engine.dialect.name == "postgresql":
+        lock_db = SessionLocal()
+        try:
+            # 1029384756 is a magic number specific to this task
+            result = await lock_db.execute(text("SELECT pg_try_advisory_lock(1029384756)"))
+            lock_acquired = result.scalar()
+            if not lock_acquired:
+                logger.debug("Another worker is running the CISA fetch. Skipping.")
+                await lock_db.close()
+                return
+        except Exception as e:
+            logger.error(f"Error acquiring lock: {e}")
+            await lock_db.close()
+            return
+
     url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -88,6 +107,14 @@ async def _fetch_and_ingest_cisa_data():
             await _ingest_vulnerabilities(vulnerabilities)
     except Exception as e:
         logger.error(f"Error fetching CISA data: {e}")
+    finally:
+        if lock_db and lock_acquired:
+            try:
+                await lock_db.execute(text("SELECT pg_advisory_unlock(1029384756)"))
+            except Exception as e:
+                logger.error(f"Error releasing lock: {e}")
+            finally:
+                await lock_db.close()
 
 
 async def heartbeat_task():

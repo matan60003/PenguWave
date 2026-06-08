@@ -23,11 +23,11 @@ PenguWave operates as a decoupled monolith built for high concurrency and robust
 2.  **Server-Side Pagination & Search:** The Events dashboard is designed to scale infinitely. Instead of loading millions of rows into the browser, the backend uses SQLAlchemy `.limit()`, `.offset()`, and `.ilike()` operators to retrieve exactly 25 rows at a time and filter searches directly in PostgreSQL.
 3.  **Real-Time Background Telemetry Engine:** A native `asyncio` task runs silently inside the FastAPI event loop, routinely fetching data from the CISA API, running deduplication checks, and inserting new vulnerabilities into the database without blocking the main web server.
 4.  **Resilient Network Layer:** The frontend uses an exponential backoff wrapper around `fetch()`. If the backend temporarily drops a connection or restarts, the frontend silently retries with increasing delays, preventing sudden application crashes.
+5.  **Distributed Task Locking:** Uses PostgreSQL Advisory Locks to guarantee the background scheduler only runs once per cycle, even if the FastAPI backend is horizontally scaled across multiple worker processes.
 
 ## ⚠️ Known Limitations
 
 1.  **Simulated Telemetry Fields:** Because the CISA KEV API only provides vulnerability descriptions and CVE IDs, our ingestion script currently generates "mock" data for the `sourceIp`, `assetHostname`, and `tags` fields to simulate a realistic network intrusion event.
-2.  **Single Node Scaling:** The background scheduler currently runs directly inside the FastAPI `lifespan` loop. If PenguWave is horizontally scaled across 10 servers, the background polling task would run 10 times simultaneously. For multi-node scaling, a distributed lock (e.g., Redis) or a dedicated Celery worker node would be required.
 
 ---
 
