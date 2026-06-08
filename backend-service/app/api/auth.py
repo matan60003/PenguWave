@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.database import get_db
 from app.schemas import schemas
@@ -11,7 +11,7 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
-def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     repo = UserRepository(db)
     return AuthService(repo)
 
@@ -21,7 +21,7 @@ async def login(
     login_data: schemas.LoginRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ) -> schemas.LoginResponse:
-    return auth_service.authenticate_user(login_data)
+    return await auth_service.authenticate_user(login_data)
 
 
 @router.post("/logout", response_model=schemas.MessageResponse)

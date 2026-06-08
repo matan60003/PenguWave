@@ -4,33 +4,34 @@ import random
 import uuid
 import httpx
 from datetime import datetime, timezone
-from sqlalchemy import text
+from sqlalchemy import text, select
 from app.database.database import SessionLocal
 from app.database import models
 
 logger = logging.getLogger("penguwave")
 
 
-def _ping_db():
+async def _ping_db():
     try:
-        with SessionLocal() as db:
-            db.execute(text("SELECT 1"))
+        async with SessionLocal() as db:
+            await db.execute(text("SELECT 1"))
             logger.debug("System Heartbeat: Database session is healthy")
     except Exception as e:
         logger.error(f"Heartbeat Database Session Error: {e}")
 
 
-def _ingest_vulnerabilities(vulnerabilities: list):
+async def _ingest_vulnerabilities(vulnerabilities: list):
     try:
-        with SessionLocal() as db:
+        async with SessionLocal() as db:
             added_count = 0
             for vuln in vulnerabilities:
                 title = vuln.get("cveID", "Unknown CVE")
 
                 # Deduplication: Check if event with this title exists
-                existing = (
-                    db.query(models.Event).filter(models.Event.title == title).first()
+                result = await db.execute(
+                    select(models.Event).filter(models.Event.title == title)
                 )
+                existing = result.scalars().first()
                 if existing:
                     continue
 
@@ -68,7 +69,7 @@ def _ingest_vulnerabilities(vulnerabilities: list):
                 db.add(new_event)
                 added_count += 1
 
-            db.commit()
+            await db.commit()
             if added_count > 0:
                 logger.info(f"Successfully ingested {added_count} new CISA KEV events.")
     except Exception as e:
@@ -84,7 +85,7 @@ async def _fetch_and_ingest_cisa_data():
             data = response.json()
             vulnerabilities = data.get("vulnerabilities", [])
 
-            await asyncio.to_thread(_ingest_vulnerabilities, vulnerabilities)
+            await _ingest_vulnerabilities(vulnerabilities)
     except Exception as e:
         logger.error(f"Error fetching CISA data: {e}")
 
@@ -95,8 +96,8 @@ async def heartbeat_task():
         while True:
             logger.info("System Heartbeat: Scheduler is active")
 
-            # Execute synchronous DB operation in a threadpool to prevent blocking the async event loop
-            await asyncio.to_thread(_ping_db)
+            # Execute asynchronous DB operation
+            await _ping_db()
 
             # Fetch and ingest real-time CISA telemetry
             await _fetch_and_ingest_cisa_data()

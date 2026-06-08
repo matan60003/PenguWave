@@ -1,21 +1,19 @@
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, or_
 from app.core.exceptions import NotFoundError
 from app.database import models
 from app.schemas import schemas
 
 
-from sqlalchemy import or_
-
-
-def get_events(
+async def get_events(
     severity: str | None,
     search: str | None,
     limit: int | None,
     offset: int | None,
-    db: Session,
+    db: AsyncSession,
 ):
-    query = db.query(models.Event)
+    query = select(models.Event)
     if severity:
         query = query.filter(models.Event.severity == severity.upper())
     if search:
@@ -27,17 +25,23 @@ def get_events(
                 models.Event.assetHostname.ilike(search_filter),
             )
         )
-    total = query.count()
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
     query = query.order_by(models.Event.timestamp.desc(), models.Event.id)
     if offset is not None:
         query = query.offset(offset)
     if limit is not None:
         query = query.limit(limit)
-    events = query.all()
+
+    result = await db.execute(query)
+    events = result.scalars().all()
     return {"data": events, "total": total}
 
 
-def create_event(event_data: schemas.EventCreate, db: Session):
+async def create_event(event_data: schemas.EventCreate, db: AsyncSession):
     event_id = f"evt-{uuid.uuid4()}"
     new_event = models.Event(
         id=event_id,
@@ -52,21 +56,23 @@ def create_event(event_data: schemas.EventCreate, db: Session):
         userId=event_data.userId,
     )
     db.add(new_event)
-    db.commit()
-    db.refresh(new_event)
+    await db.commit()
+    await db.refresh(new_event)
     return new_event
 
 
-def get_event(id: str, db: Session):
-    event = db.query(models.Event).filter(models.Event.id == id).first()
+async def get_event(id: str, db: AsyncSession):
+    result = await db.execute(select(models.Event).filter(models.Event.id == id))
+    event = result.scalars().first()
     if not event:
         raise NotFoundError("Event not found")
     return event
 
 
-def delete_event(id: str, db: Session):
-    event = db.query(models.Event).filter(models.Event.id == id).first()
+async def delete_event(id: str, db: AsyncSession):
+    result = await db.execute(select(models.Event).filter(models.Event.id == id))
+    event = result.scalars().first()
     if not event:
         raise NotFoundError("Event not found")
-    db.delete(event)
-    db.commit()
+    await db.delete(event)
+    await db.commit()

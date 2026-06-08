@@ -8,10 +8,10 @@ class AuthService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
 
-    def authenticate_user(
+    async def authenticate_user(
         self, login_data: schemas.LoginRequest
     ) -> schemas.LoginResponse:
-        user = self.user_repo.get_by_email(login_data.email)
+        user = await self.user_repo.get_by_email(login_data.email)
 
         if not user or not security.verify_password(
             login_data.password, user.hashed_password

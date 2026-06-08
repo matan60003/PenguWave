@@ -1,19 +1,22 @@
 import uuid
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.core.exceptions import ValidationError, NotFoundError
 from app.database import models
 from app.schemas import schemas
 from app.core import security
 
 
-def get_all_users(db: Session):
-    return db.query(models.User).all()
+async def get_all_users(db: AsyncSession):
+    result = await db.execute(select(models.User))
+    return result.scalars().all()
 
 
-def create_user(user_data: schemas.UserCreate, db: Session):
-    existing = (
-        db.query(models.User).filter(models.User.email == user_data.email).first()
+async def create_user(user_data: schemas.UserCreate, db: AsyncSession):
+    result = await db.execute(
+        select(models.User).filter(models.User.email == user_data.email)
     )
+    existing = result.scalars().first()
     if existing:
         raise ValidationError("User with this email already exists")
 
@@ -26,13 +29,14 @@ def create_user(user_data: schemas.UserCreate, db: Session):
         status="active",
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
 
 
-def update_user(id: str, user_data: schemas.UserUpdate, db: Session):
-    user = db.query(models.User).filter(models.User.id == id).first()
+async def update_user(id: str, user_data: schemas.UserUpdate, db: AsyncSession):
+    result = await db.execute(select(models.User).filter(models.User.id == id))
+    user = result.scalars().first()
     if not user:
         raise NotFoundError("User not found")
 
@@ -41,18 +45,19 @@ def update_user(id: str, user_data: schemas.UserUpdate, db: Session):
     if user_data.status is not None:
         user.status = user_data.status
 
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
-def delete_user(id: str, current_user_id: str, db: Session):
+async def delete_user(id: str, current_user_id: str, db: AsyncSession):
     if current_user_id == id:
         raise ValidationError("Cannot delete your own admin account")
 
-    user = db.query(models.User).filter(models.User.id == id).first()
+    result = await db.execute(select(models.User).filter(models.User.id == id))
+    user = result.scalars().first()
     if not user:
         raise NotFoundError("User not found")
 
-    db.delete(user)
-    db.commit()
+    await db.delete(user)
+    await db.commit()

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.database import get_db
 from app.schemas import schemas
@@ -17,11 +17,11 @@ async def get_events(
     search: str | None = None,
     limit: int | None = None,
     offset: int | None = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     if limit is not None:
         limit = min(limit, 100)
-    return event_service.get_events(severity, search, limit, offset, db)
+    return await event_service.get_events(severity, search, limit, offset, db)
 
 
 @router.post(
@@ -32,14 +32,14 @@ async def get_events(
 )
 async def create_event(
     event_data: schemas.EventCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    return event_service.create_event(event_data, db)
+    return await event_service.create_event(event_data, db)
 
 
 @router.get("/{id}", response_model=schemas.EventResponse)
-async def get_event(id: str, db: Session = Depends(get_db)):
-    return event_service.get_event(id, db)
+async def get_event(id: str, db: AsyncSession = Depends(get_db)):
+    return await event_service.get_event(id, db)
 
 
 @router.delete(
@@ -47,6 +47,6 @@ async def get_event(id: str, db: Session = Depends(get_db)):
     response_model=schemas.MessageResponse,
     dependencies=[Depends(require_admin)],
 )
-async def delete_event(id: str, db: Session = Depends(get_db)):
-    event_service.delete_event(id, db)
+async def delete_event(id: str, db: AsyncSession = Depends(get_db)):
+    await event_service.delete_event(id, db)
     return {"message": "Event deleted"}

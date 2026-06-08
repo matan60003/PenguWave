@@ -4,7 +4,7 @@ from pathlib import Path
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
-from sqlalchemy import text
+from sqlalchemy import text, select
 
 from app.core.config import settings
 from app.database.database import SessionLocal, Base, engine
@@ -19,7 +19,6 @@ def load_mock_events() -> list[dict]:
     config_path = Path(settings.MOCK_EVENTS_PATH)
 
     if not config_path.is_absolute():
-        # app/core/lifespan.py -> app/core -> app -> backend-service
         base_dir = Path(__file__).resolve().parent
         resolved_path = (base_dir / config_path).resolve()
     else:
@@ -63,13 +62,16 @@ def load_mock_events() -> list[dict]:
 async def lifespan(app: FastAPI):
     logger.info("Initializing database schema...")
     try:
-        Base.metadata.create_all(bind=engine)
-        with SessionLocal() as db:
-            db.execute(text("SELECT 1"))
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        async with SessionLocal() as db:
+            await db.execute(text("SELECT 1"))
             admin_email = "admin@penguwave.com"
-            existing_user = (
-                db.query(models.User).filter(models.User.email == admin_email).first()
+            result = await db.execute(
+                select(models.User).filter(models.User.email == admin_email)
             )
+            existing_user = result.scalars().first()
             if not existing_user:
                 logger.info(f"Seeding default admin user: {admin_email}")
                 default_admin = models.User(
@@ -80,10 +82,11 @@ async def lifespan(app: FastAPI):
                     status="active",
                 )
                 db.add(default_admin)
-                db.commit()
+                await db.commit()
                 logger.info("Default admin user successfully seeded.")
 
-            existing_event = db.query(models.Event).first()
+            result = await db.execute(select(models.Event).limit(1))
+            existing_event = result.scalars().first()
             if not existing_event:
                 logger.info("Seeding security events from JSON...")
                 try:
@@ -102,7 +105,7 @@ async def lifespan(app: FastAPI):
                             userId=evt["userId"],
                         )
                         db.add(db_evt)
-                    db.commit()
+                    await db.commit()
                     logger.info("Security events successfully seeded.")
                 except Exception as ex_seed:
                     logger.error(f"Failed to seed security events: {ex_seed}")
