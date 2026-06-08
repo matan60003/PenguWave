@@ -152,7 +152,7 @@ sequenceDiagram
     Dev->>Git: git push origin branch_name
     Git->>GitHub: Push Trigger
     
-    rect rgb(50, 50, 50)
+    rect rgba(223, 206, 206, 1)
     Note over GitHub,Actions: Automated Quality Gates
     GitHub->>Actions: Trigger CI Pipeline
     Actions->>Actions: Run ruff check (Linting)
