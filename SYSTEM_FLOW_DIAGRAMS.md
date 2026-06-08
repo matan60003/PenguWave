@@ -1,12 +1,12 @@
 # PenguWave System Flow Diagrams
 
-This document contains visual diagrams mapping out the critical communication paths between the different layers of the PenguWave architecture. You can view these diagrams in any Markdown viewer that supports Mermaid.js (such as GitHub, VS Code, or modern IDEs).
+This document contains visual diagrams mapping out the critical communication paths between the different layers of the PenguWave architecture.
 
 ---
 
 ## 1. User API Request Lifecycle (Fetching Events)
 
-This diagram illustrates the "Clean Architecture" flow. Notice how the request moves strictly through defined layers (Frontend -> Router -> Service -> Repository -> Database) without skipping steps.
+This diagram illustrates the  Architecture flow. Notice how the request moves strictly through defined layers (Frontend -> Router -> Service -> Repository -> Database) without skipping steps.
 
 ```mermaid
 sequenceDiagram
