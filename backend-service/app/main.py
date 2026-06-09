@@ -11,6 +11,7 @@ import jwt
 import json
 
 from app.core.lifespan import lifespan
+from app.core.middleware import CorrelationIdMiddleware, correlation_id_ctx
 from app.api import auth, users, events, websockets
 from app.database.database import get_db
 from app.core.exceptions import (
@@ -27,6 +28,7 @@ class JSONLogFormatter(logging.Formatter):
             "time": self.formatTime(record, self.datefmt),
             "name": record.name,
             "level": record.levelname,
+            "correlation_id": correlation_id_ctx.get(None),
             "message": record.getMessage(),
         }
         return json.dumps(log_obj)
@@ -57,6 +59,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(CorrelationIdMiddleware)
 
 
 @app.exception_handler(HTTPException)
