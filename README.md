@@ -24,6 +24,7 @@ PenguWave operates as a decoupled monolith built for high concurrency and robust
 3.  **Real-Time Background Telemetry Engine:** A native `asyncio` task runs silently inside the FastAPI event loop, routinely fetching data from the CISA API. It maps the data directly into the Service layer using a dedicated `usr-system` account, runs efficient batch deduplication checks (chunking `IN()` clauses to avoid maximum query size limits), and inserts new vulnerabilities into the database using bulk `add_all()` without blocking the main web server.
 4.  **Resilient Network Layer:** The frontend uses an exponential backoff wrapper around `fetch()`. If the backend temporarily drops a connection or restarts, the frontend silently retries with increasing delays, preventing sudden application crashes.
 5.  **Distributed Task Locking:** Uses explicit session-bound PostgreSQL Advisory Locks (`pg_try_advisory_lock`) to guarantee the background scheduler only runs once per cycle without leaking connections, even if the FastAPI backend is horizontally scaled across multiple worker processes.
+6.  **Real-Time Live Feed (WebSockets):** Achieves instant UI updates across all connected browser clients without using Redis. Whenever the background task ingests new events or an analyst manually modifies an event, the API triggers a PostgreSQL `NOTIFY` payload. A background `LISTEN` task instantly catches it and broadcasts it via FastAPI WebSockets to trigger a seamless React state refresh.
 
 ## ⚠️ Known Limitations
 

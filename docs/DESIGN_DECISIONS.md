@@ -20,6 +20,9 @@ During development, several strategic decisions were made to balance performance
 
 *   **FastAPI for Async I/O**: 
     *   *Why*: I chose FastAPI over synchronous frameworks like Flask/Django because my workload involves heavily I/O-bound operations (fetching external CISA JSON feeds and performing bulk database inserts). Asynchronous execution allows the server to handle concurrent web requests while background tasks run simultaneously without blocking the main event loop.
+
+*   **PostgreSQL `LISTEN`/`NOTIFY` vs Redis for WebSockets**:
+    *   *Why*: When building the Real-Time Live Feed, we needed a way for multiple FastAPI workers to communicate. If Worker A ingests an event, Worker B's WebSocket clients need to know. The industry standard is Redis pub/sub. However, adding Redis introduces another infrastructural dependency, increasing deployment complexity. Because we already use PostgreSQL, I leveraged its native `LISTEN`/`NOTIFY` commands. This achieves the exact same brokerless cross-worker broadcasting with zero additional infrastructure overhead.
 *   **PostgreSQL Advisory Locks vs. Redis/Celery**: 
     *   *Why*: To prevent multiple worker nodes from running the same background telemetry ingestion task at once, I utilized `pg_try_advisory_lock`. While a dedicated message broker (like RabbitMQ) or cache (Redis) is the industry standard for distributed task queuing, utilizing PostgreSQL's native advisory locks allowed me to ensure concurrency control while keeping my infrastructure stack simple and reducing maintenance overhead for the project.
 *   **UUID Primary Keys vs. Auto-Incrementing Integers**: 

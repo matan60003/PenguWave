@@ -169,3 +169,43 @@ sequenceDiagram
         GitHub-->>Dev: Block Merge & Request Fixes
     end
 ```
+
+---
+
+## 5. Real-Time WebSocket Broadcasting Flow
+
+This diagram illustrates how PostgreSQL acts as a brokerless pub/sub engine to synchronize multiple FastAPI workers and push live updates to the frontend React dashboard.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Browser as React Frontend
+    participant WS as WebSocket Manager
+    participant API as FastAPI Router / Scheduler
+    participant Listener as Background Listener
+    participant DB as PostgreSQL
+
+    rect rgba(200, 206, 213, 1)
+    Note over Browser,WS: Persistent Connection Setup
+    Browser->>WS: Upgrade HTTP to ws://api/ws
+    WS-->>Browser: Connection Established (101 Switching Protocols)
+    end
+    
+    Listener->>DB: SQL: LISTEN new_events (Blocks & waits)
+    
+    rect rgba(194, 208, 194, 1)
+    Note over API,DB: State Change Trigger
+    API->>DB: INSERT / DELETE Event
+    API->>DB: SQL: NOTIFY new_events, '{"type": "NEW_EVENTS"}'
+    API->>DB: SQL: COMMIT
+    end
+    
+    DB-->>Listener: Asynchronous Payload Received
+    
+    rect rgba(233, 206, 206, 1)
+    Note over Listener,Browser: Cross-Worker Broadcast
+    Listener->>WS: Broadcast Payload
+    WS->>Browser: ws.send_json({"type": "NEW_EVENTS"})
+    Browser->>Browser: React catches message, fetches fresh data
+    end
+```
