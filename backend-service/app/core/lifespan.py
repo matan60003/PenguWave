@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
                 db.add(default_admin)
                 await db.commit()
                 logger.info("Default admin user successfully seeded.")
-                
+
             system_email = "system@penguwave.com"
             result_sys = await db.execute(
                 select(models.User).filter(models.User.email == system_email)
@@ -140,11 +140,12 @@ async def lifespan(app: FastAPI):
         dsn = settings.DATABASE_URL.replace("+asyncpg", "")
         try:
             conn = await asyncpg.connect(dsn)
+
             def handle_notification(connection, pid, channel, payload):
                 logger.info(f"Received notification on channel {channel}: {payload}")
                 asyncio.create_task(manager.broadcast(payload))
 
-            await conn.add_listener('new_events', handle_notification)
+            await conn.add_listener("new_events", handle_notification)
             logger.info("Listening for PostgreSQL notifications on 'new_events'...")
             while True:
                 await asyncio.sleep(3600)

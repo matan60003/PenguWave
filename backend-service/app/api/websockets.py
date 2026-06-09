@@ -5,6 +5,7 @@ import logging
 logger = logging.getLogger("penguwave")
 router = APIRouter(tags=["WebSockets"])
 
+
 @router.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)

@@ -49,16 +49,15 @@ class EventService:
     async def bulk_ingest_events(self, events_data: list[schemas.EventCreate]) -> int:
         if not events_data:
             return 0
-            
+
         titles = [e.title for e in events_data]
-       
+
         existing_titles = await self.event_repo.get_existing_titles(titles)
-        
+
         new_events = []
         for event_data in events_data:
             if event_data.title in existing_titles:
                 continue
-                
 
             event_id = f"evt-{uuid.uuid4()}"
             new_event = models.Event(
@@ -74,8 +73,8 @@ class EventService:
                 userId=event_data.userId,
             )
             new_events.append(new_event)
-            
+
         if new_events:
             await self.event_repo.bulk_create(new_events)
-            
+
         return len(new_events)

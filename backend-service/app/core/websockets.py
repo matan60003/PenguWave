@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger("penguwave")
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -16,7 +17,9 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logger.debug(f"WebSocket disconnected. Total: {len(self.active_connections)}")
+            logger.debug(
+                f"WebSocket disconnected. Total: {len(self.active_connections)}"
+            )
 
     async def broadcast(self, message: str):
         disconnected = []
@@ -26,8 +29,9 @@ class ConnectionManager:
             except Exception as e:
                 logger.error(f"Error broadcasting to WebSocket: {e}")
                 disconnected.append(connection)
-                
+
         for connection in disconnected:
             self.disconnect(connection)
+
 
 manager = ConnectionManager()

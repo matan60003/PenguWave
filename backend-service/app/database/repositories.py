@@ -15,7 +15,7 @@ class UserRepository:
 
     async def get_all(self) -> list[models.User]:
         result = await self.db.execute(select(models.User))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def get_by_id(self, id: str) -> models.User | None:
         result = await self.db.execute(select(models.User).filter(models.User.id == id))
@@ -76,7 +76,9 @@ class EventRepository:
         return {"data": events, "total": total}
 
     async def get_by_id(self, id: str) -> models.Event | None:
-        result = await self.db.execute(select(models.Event).filter(models.Event.id == id))
+        result = await self.db.execute(
+            select(models.Event).filter(models.Event.id == id)
+        )
         return result.scalars().first()
 
     async def create(self, event: models.Event) -> models.Event:
@@ -92,16 +94,16 @@ class EventRepository:
     async def get_existing_titles(self, titles: list[str]) -> set[str]:
         if not titles:
             return set()
-        
-        existing_titles = set()
+
+        existing_titles: set[str] = set()
         chunk_size = 100
         for i in range(0, len(titles), chunk_size):
-            chunk = titles[i:i + chunk_size]
+            chunk = titles[i : i + chunk_size]
             result = await self.db.execute(
                 select(models.Event.title).filter(models.Event.title.in_(chunk))
             )
             existing_titles.update(result.scalars().all())
-            
+
         return existing_titles
 
     async def bulk_create(self, events: list[models.Event]) -> None:

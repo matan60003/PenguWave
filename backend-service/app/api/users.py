@@ -39,7 +39,9 @@ async def create_user(
     "/{id}", response_model=schemas.UserResponse, dependencies=[Depends(require_admin)]
 )
 async def update_user(
-    id: str, user_data: schemas.UserUpdate, user_service: UserService = Depends(get_user_service)
+    id: str,
+    user_data: schemas.UserUpdate,
+    user_service: UserService = Depends(get_user_service),
 ):
     return await user_service.update_user(id, user_data)
 

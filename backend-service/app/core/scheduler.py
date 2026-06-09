@@ -24,7 +24,7 @@ async def _ping_db():
 async def _ingest_vulnerabilities(vulnerabilities: list):
     if not vulnerabilities:
         return
-        
+
     events_to_create = []
     for vuln in vulnerabilities:
         title = vuln.get("cveID", "Unknown CVE")
@@ -33,10 +33,11 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
         raw_date = vuln.get("dateAdded")
         if raw_date:
             try:
-                dt = datetime.strptime(raw_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                dt = datetime.strptime(raw_date, "%Y-%m-%d").replace(
+                    tzinfo=timezone.utc
+                )
                 timestamp = dt.isoformat()
             except ValueError:
-
                 timestamp = datetime.now(timezone.utc).isoformat()
         else:
             timestamp = datetime.now(timezone.utc).isoformat()
@@ -58,16 +59,16 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
             userId="usr-system",
         )
         events_to_create.append(event_create)
-        
+
     try:
         async with SessionLocal() as db:
             event_repo = EventRepository(db)
             event_service = EventService(event_repo)
             added_count = await event_service.bulk_ingest_events(events_to_create)
-            
+
             if added_count > 0:
                 logger.info(f"Successfully ingested {added_count} new CISA KEV events.")
-                await db.execute(text("NOTIFY new_events, '{\"type\"\: \"NEW_EVENTS\"}'"))
+                await db.execute(text('NOTIFY new_events, \'{"type"\: "NEW_EVENTS"}\''))
                 await db.commit()
     except Exception:
         logger.error("Database error during CISA ingestion", exc_info=True)
@@ -76,13 +77,14 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
 async def _fetch_and_ingest_cisa_data():
     lock_db = None
     lock_acquired = False
-    
+
     # Try to acquire an advisory lock to prevent multiple workers from running this simultaneously
     if engine.dialect.name == "postgresql":
         lock_db = SessionLocal()
         try:
-           
-            result = await lock_db.execute(text("SELECT pg_try_advisory_lock(1029384756)"))
+            result = await lock_db.execute(
+                text("SELECT pg_try_advisory_lock(1029384756)")
+            )
             lock_acquired = result.scalar()
             if not lock_acquired:
                 logger.debug("Another worker is running the CISA fetch. Skipping.")
@@ -95,7 +97,6 @@ async def _fetch_and_ingest_cisa_data():
 
     url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
     try:
-       
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url)
             response.raise_for_status()
