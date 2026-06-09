@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { User } from "../types";
@@ -30,12 +31,7 @@ export default function UsersPage() {
   }, [user]);
 
   if (user?.role !== "admin") {
-    return (
-      <div className="page-container">
-        <h2 style={{ color: "red" }}>Access Denied</h2>
-        <p>You must be an administrator to view this page.</p>
-      </div>
-    );
+    return <Navigate to="/events" replace />;
   }
 
   const onSubmit = async (data: CreateUserFormValues) => {

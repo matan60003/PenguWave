@@ -19,12 +19,14 @@ export default function Navbar() {
         >
           Events
         </Link>
-        <Link
-          to="/users"
-          className={location.pathname === "/users" ? "active" : ""}
-        >
-          Users
-        </Link>
+        {user?.role === "admin" && (
+          <Link
+            to="/users"
+            className={location.pathname === "/users" ? "active" : ""}
+          >
+            Users
+          </Link>
+        )}
         {user ? (
           <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
             <span style={{ fontSize: "14px", color: "#666" }}>
