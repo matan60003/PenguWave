@@ -199,39 +199,43 @@ export default function EventsPage() {
         </button>
       </div>
 
-      {/* Inline event detail */}
+      {/* Event detail modal */}
       {selectedEvent && (
-        <div className="event-detail">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2>{selectedEvent.title}</h2>
-            <button onClick={() => setSelectedEvent(null)} style={{ cursor: "pointer" }}>
-              Close
-            </button>
+        <div className="modal-backdrop">
+          <div className="modal-content" style={{ maxWidth: 600 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h2 style={{ margin: 0 }}>{selectedEvent.title}</h2>
+              <button onClick={() => setSelectedEvent(null)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", lineHeight: 1 }}>
+                &times;
+              </button>
+            </div>
+            <p style={{ marginTop: 0 }}>
+              <strong>Severity:</strong>{" "}
+              <span style={{ color: severityColor(selectedEvent.severity) }}>
+                {selectedEvent.severity}
+              </span>
+            </p>
+            <p>
+              <strong>Description:</strong>
+            </p>
+            <div>{selectedEvent.description}</div>
+            <p>
+              <strong>Asset:</strong> {selectedEvent.assetHostname} ({selectedEvent.assetIp})
+            </p>
+            <p>
+              <strong>Source IP:</strong> {selectedEvent.sourceIp}
+            </p>
+            <p>
+              <strong>Tags:</strong> {selectedEvent.tags.join(", ")}
+            </p>
+            <p>
+              <strong>Timestamp:</strong> {new Date(selectedEvent.timestamp).toLocaleString()}
+            </p>
+            <h3 style={{ marginTop: 24, marginBottom: 8 }}>Raw Event Data</h3>
+            <pre style={{ background: "#f5f5f5", padding: 12, borderRadius: 4, overflowX: "auto", fontSize: 13, margin: 0 }}>
+              {JSON.stringify(selectedEvent, null, 2)}
+            </pre>
           </div>
-          <p>
-            <strong>Severity:</strong>{" "}
-            <span style={{ color: severityColor(selectedEvent.severity) }}>
-              {selectedEvent.severity}
-            </span>
-          </p>
-          <p>
-            <strong>Description:</strong>
-          </p>
-          <div>{selectedEvent.description}</div>
-          <p>
-            <strong>Asset:</strong> {selectedEvent.assetHostname} ({selectedEvent.assetIp})
-          </p>
-          <p>
-            <strong>Source IP:</strong> {selectedEvent.sourceIp}
-          </p>
-          <p>
-            <strong>Tags:</strong> {selectedEvent.tags.join(", ")}
-          </p>
-          <p>
-            <strong>Timestamp:</strong> {new Date(selectedEvent.timestamp).toLocaleString()}
-          </p>
-          <h3>Raw Event Data</h3>
-          <pre>{JSON.stringify(selectedEvent, null, 2)}</pre>
         </div>
       )}
 
