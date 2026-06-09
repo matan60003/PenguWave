@@ -14,25 +14,23 @@ PenguWave operates as a decoupled monolith built for high concurrency and robust
 *   **Data Validation:** Pydantic strictly validates all incoming requests and outgoing API responses, ensuring absolute data conformity.
 *   **Containerization:** The backend server and PostgreSQL database are fully containerized using Docker and orchestrated via `docker-compose`.
 
-## 🔌 External APIs Used
-*   **CISA KEV Feed:** PenguWave operates a background scheduler that routinely pings the US Government's **Known Exploited Vulnerabilities (KEV)** API (`https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`) to automatically ingest live threat intelligence into the dashboard.
+## 🔐 How Security Works
 
-## ✨ Implemented Features
+### How Authentication Works
+Authentication in PenguWave is completely **stateless**, utilizing JSON Web Tokens (JWT) and Bcrypt:
+1. **Password Hashing:** When a user is created, their plaintext password is cryptographically hashed using `bcrypt` before being saved to PostgreSQL. We never store plaintext passwords.
+2. **Login Verification:** Upon login, the backend verifies the provided password against the stored hash. If successful, it generates a JWT signed with a secret backend key.
+3. **Stateless Sessions:** This token is returned to the React frontend, which stores it locally and attaches it to the `Authorization: Bearer <token>` header of every subsequent API request. The backend validates the cryptographic signature of the token to identify the user without needing to query a session database.
 
-1.  **JWT Authentication & RBAC:** Secure, stateless login system. Users possess specific roles (`admin` vs `user`), and the backend strictly enforces permissions (e.g., only admins can delete events or create users). Passwords are cryptographically hashed using `bcrypt`.
-2.  **Server-Side Pagination & Search:** The Events dashboard is designed to scale infinitely. Instead of loading millions of rows into the browser, the backend uses SQLAlchemy `.limit()`, `.offset()`, and `.ilike()` operators to retrieve exactly 25 rows at a time and filter searches directly in PostgreSQL.
-3.  **Real-Time Background Telemetry Engine:** A native `asyncio` task runs silently inside the FastAPI event loop, routinely fetching data from the CISA API. It maps the data directly into the Service layer using a dedicated `usr-system` account, runs efficient batch deduplication checks (chunking `IN()` clauses to avoid maximum query size limits), and inserts new vulnerabilities into the database using bulk `add_all()` without blocking the main web server.
-4.  **Resilient Network Layer:** The frontend uses an exponential backoff wrapper around `fetch()`. If the backend temporarily drops a connection or restarts, the frontend silently retries with increasing delays, preventing sudden application crashes.
-5.  **Distributed Task Locking:** Uses explicit session-bound PostgreSQL Advisory Locks (`pg_try_advisory_lock`) to guarantee the background scheduler only runs once per cycle without leaking connections, even if the FastAPI backend is horizontally scaled across multiple worker processes.
-6.  **Real-Time Live Feed (WebSockets):** Achieves instant UI updates across all connected browser clients without using Redis. Whenever the background task ingests new events or an analyst manually modifies an event, the API triggers a PostgreSQL `NOTIFY` payload. A background `LISTEN` task instantly catches it and broadcasts it via FastAPI WebSockets to trigger a seamless React state refresh.
-
-## ⚠️ Known Limitations
-
-1.  **Simulated Telemetry Fields:** Because the CISA KEV API only provides vulnerability descriptions and CVE IDs, our ingestion script currently generates "mock" data for the `sourceIp`, `assetHostname`, and `tags` fields to simulate a realistic network intrusion event.
+### How Authorization is Enforced
+Authorization utilizes strict **Role-Based Access Control (RBAC)** across the stack:
+1. **Backend Enforcement (The Source of Truth):** FastAPI dependencies (like `require_admin`) act as strict gates on the routing layer. If a standard user attempts to send a `DELETE /api/events/1` request, the backend actively inspects the role embedded in their JWT payload. If their role is not `admin`, the backend instantly rejects the request with a `403 Forbidden` error before any business logic executes.
+2. **Active Status Checking:** Every protected request also queries the database to ensure the user's `status` is currently `active`. If an administrator suspends a user, their access is revoked instantly, even if their JWT hasn't expired yet.
+3. **Frontend UX:** The React application reads the user's role and conditionally hides UI elements (like the "Delete" button or the "Users" admin panel) to prevent users from interacting with features they are not authorized to use.
 
 ---
 
-## 🚀 How to Run the System
+## 🚀 How to Run the Project
 
 ### Prerequisites
 *   [Docker](https://docs.docker.com/get-docker/) & Docker Compose installed.
@@ -63,11 +61,11 @@ Once the frontend loads, use the seeded admin credentials to log in:
 
 ---
 
-## 🔒 Production Deployment & Security Basics
+## 🔒 How You Would Deploy This Securely In Production
 
 To securely host this application on the internet, I would implement these fundamental security practices:
 
-1.  **HTTPS (Encryption):** I would never run the app on basic HTTP. I would set up an SSL Certificate (using something free like Let's Encrypt) to ensure all traffic between the user's browser and the server is encrypted.
-2.  **Hiding Passwords (Environment Variables):** Currently, passwords (like the database password) might be written in configuration files for local testing. Before going live, I would move all passwords into hidden `.env` files or a cloud Secret Manager so they are never uploaded to GitHub.
-3.  **Database Isolation:** I would make sure the PostgreSQL database is not accessible from the open internet. The database port (5432) should be completely blocked from the outside, and only the FastAPI backend should be allowed to talk to it.
-4.  **Rate Limiting:** To prevent hackers from using automated bots to guess user passwords (brute-force attacks), I would add Rate Limiting to the API. This would block an IP address if it tries to log in too many times in a row.
+1.  **HTTPS (Encryption):** I would never run the app on basic HTTP. I would set up an SSL/TLS Certificate (using a reverse proxy like Nginx or AWS ALB) to ensure all traffic between the user's browser and the server is encrypted. Since we rely on JWTs passed in headers, HTTP would expose tokens to interception.
+2.  **Environment Variables & Secrets:** I would remove all hardcoded passwords (like the database password in `docker-compose.yml`) and move them into hidden `.env` files or a cloud Secret Manager (like AWS Secrets Manager). These secrets would be injected into the containers at runtime and never committed to source control.
+3.  **Database Network Isolation:** I would place the PostgreSQL database in a private subnet (VPC) that is completely inaccessible from the public internet. Only the FastAPI backend servers would have network access to talk to the database on port `5432`.
+4.  **Rate Limiting & WAF:** To prevent automated brute-force attacks against the `/api/auth/login` endpoint, I would implement strict Rate Limiting in FastAPI or use a Web Application Firewall (WAF) like Cloudflare to block malicious traffic before it hits the application.
