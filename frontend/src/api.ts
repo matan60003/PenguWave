@@ -10,7 +10,7 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
   };
   const config = { ...options, headers };
 
-  for (let i = 0; i < retries; i++) {
+  for (let i = 0; i <= retries; i++) {
     try {
       const res = await fetch(url, config);
       if (!res.ok) {
@@ -24,11 +24,11 @@ async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 
       }
       return res;
     } catch (err) {
-      if (i === retries - 1) throw err;
+      if (i === retries) throw err;
       await new Promise(resolve => setTimeout(resolve, backoff * Math.pow(2, i)));
     }
   }
-  return fetch(url, config);
+  throw new Error("Unreachable");
 }
 
 export async function login(email: string, password: string) {

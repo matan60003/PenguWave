@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from app.database.database import get_db
 from app.schemas import schemas
@@ -39,8 +40,13 @@ async def get_events(
 async def create_event(
     event_data: schemas.EventCreate,
     event_service: EventService = Depends(get_event_service),
+    db: AsyncSession = Depends(get_db),
 ):
-    return await event_service.create_event(event_data)
+    result = await event_service.create_event(event_data)
+    await db.execute(text("NOTIFY new_events, '{\"type\"\: \"NEW_EVENTS\"}'"))
+    await db.commit()
+    await db.refresh(result)
+    return result
 
 
 @router.get("/{id}", response_model=schemas.EventResponse)
@@ -53,6 +59,12 @@ async def get_event(id: str, event_service: EventService = Depends(get_event_ser
     response_model=schemas.MessageResponse,
     dependencies=[Depends(require_admin)],
 )
-async def delete_event(id: str, event_service: EventService = Depends(get_event_service)):
+async def delete_event(
+    id: str, 
+    event_service: EventService = Depends(get_event_service),
+    db: AsyncSession = Depends(get_db),
+):
     await event_service.delete_event(id)
+    await db.execute(text("NOTIFY new_events, '{\"type\"\: \"NEW_EVENTS\"}'"))
+    await db.commit()
     return {"message": "Event deleted"}

@@ -88,3 +88,24 @@ class EventRepository:
     async def delete(self, event: models.Event) -> None:
         await self.db.delete(event)
         await self.db.commit()
+
+    async def get_existing_titles(self, titles: list[str]) -> set[str]:
+        if not titles:
+            return set()
+        
+        existing_titles = set()
+        chunk_size = 100
+        for i in range(0, len(titles), chunk_size):
+            chunk = titles[i:i + chunk_size]
+            result = await self.db.execute(
+                select(models.Event.title).filter(models.Event.title.in_(chunk))
+            )
+            existing_titles.update(result.scalars().all())
+            
+        return existing_titles
+
+    async def bulk_create(self, events: list[models.Event]) -> None:
+        if not events:
+            return
+        self.db.add_all(events)
+        await self.db.commit()

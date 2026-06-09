@@ -1,12 +1,13 @@
 import asyncio
 import logging
 import random
-import uuid
 import httpx
 from datetime import datetime, timezone
-from sqlalchemy import text, select
+from sqlalchemy import text
 from app.database.database import SessionLocal, engine
-from app.database import models
+from app.schemas import schemas
+from app.services.event_service import EventService
+from app.database.repositories import EventRepository
 
 logger = logging.getLogger("penguwave")
 
@@ -21,62 +22,55 @@ async def _ping_db():
 
 
 async def _ingest_vulnerabilities(vulnerabilities: list):
+    if not vulnerabilities:
+        return
+        
+    events_to_create = []
+    for vuln in vulnerabilities:
+        title = vuln.get("cveID", "Unknown CVE")
+        description = vuln.get("shortDescription", "No description provided.")
+
+        raw_date = vuln.get("dateAdded")
+        if raw_date:
+            try:
+                dt = datetime.strptime(raw_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                timestamp = dt.isoformat()
+            except ValueError:
+
+                timestamp = datetime.now(timezone.utc).isoformat()
+        else:
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+        severity = random.choice(["HIGH", "MEDIUM", "LOW"])
+        source_ip = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
+        assets = ["prod-web-01", "prod-db-02", "k8s-worker-node", "edge-router"]
+        asset = random.choice(assets)
+
+        event_create = schemas.EventCreate(
+            timestamp=timestamp,
+            severity=severity,
+            title=title,
+            description=description,
+            assetHostname=asset,
+            assetIp="10.0.0.1",
+            sourceIp=source_ip,
+            tags=["CISA", "KEV"],
+            userId="usr-system",
+        )
+        events_to_create.append(event_create)
+        
     try:
         async with SessionLocal() as db:
-            added_count = 0
+            event_repo = EventRepository(db)
+            event_service = EventService(event_repo)
+            added_count = await event_service.bulk_ingest_events(events_to_create)
             
-            titles = [vuln.get("cveID", "Unknown CVE") for vuln in vulnerabilities]
-            
-            result = await db.execute(
-                select(models.Event.title).filter(models.Event.title.in_(titles))
-            )
-            existing_titles = set(result.scalars().all())
-
-            for vuln in vulnerabilities:
-                title = vuln.get("cveID", "Unknown CVE")
-
-                if title in existing_titles:
-                    continue
-
-                description = vuln.get("shortDescription", "No description provided.")
-
-                raw_date = vuln.get("dateAdded")
-                if raw_date:
-                    try:
-                        dt = datetime.strptime(raw_date, "%Y-%m-%d").replace(
-                            tzinfo=timezone.utc
-                        )
-                        timestamp = dt.isoformat()
-                    except ValueError:
-                        timestamp = datetime.now(timezone.utc).isoformat()
-                else:
-                    timestamp = datetime.now(timezone.utc).isoformat()
-
-                severity = random.choice(["HIGH", "MEDIUM", "LOW"])
-                source_ip = f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}"
-                assets = ["prod-web-01", "prod-db-02", "k8s-worker-node", "edge-router"]
-                asset = random.choice(assets)
-
-                new_event = models.Event(
-                    id=f"evt-{uuid.uuid4()}",
-                    timestamp=timestamp,
-                    severity=severity,
-                    title=title,
-                    description=description,
-                    assetHostname=asset,
-                    assetIp="10.0.0.1",
-                    sourceIp=source_ip,
-                    tags=["CISA", "KEV"],
-                    userId="usr-admin",
-                )
-                db.add(new_event)
-                added_count += 1
-
-            await db.commit()
             if added_count > 0:
                 logger.info(f"Successfully ingested {added_count} new CISA KEV events.")
-    except Exception as e:
-        logger.error(f"Database error during CISA ingestion: {e}")
+                await db.execute(text("NOTIFY new_events, '{\"type\"\: \"NEW_EVENTS\"}'"))
+                await db.commit()
+    except Exception:
+        logger.error("Database error during CISA ingestion", exc_info=True)
 
 
 async def _fetch_and_ingest_cisa_data():
@@ -87,20 +81,21 @@ async def _fetch_and_ingest_cisa_data():
     if engine.dialect.name == "postgresql":
         lock_db = SessionLocal()
         try:
-            # 1029384756 is a magic number specific to this task
+           
             result = await lock_db.execute(text("SELECT pg_try_advisory_lock(1029384756)"))
             lock_acquired = result.scalar()
             if not lock_acquired:
                 logger.debug("Another worker is running the CISA fetch. Skipping.")
                 await lock_db.close()
                 return
-        except Exception as e:
-            logger.error(f"Error acquiring lock: {e}")
+        except Exception:
+            logger.error("Error acquiring lock", exc_info=True)
             await lock_db.close()
             return
 
     url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
     try:
+       
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(url)
             response.raise_for_status()
@@ -108,16 +103,15 @@ async def _fetch_and_ingest_cisa_data():
             vulnerabilities = data.get("vulnerabilities", [])
 
             await _ingest_vulnerabilities(vulnerabilities)
-    except Exception as e:
-        logger.error(f"Error fetching CISA data: {e}")
+    except Exception:
+        logger.error("Error fetching CISA data", exc_info=True)
     finally:
         if lock_db and lock_acquired:
             try:
                 await lock_db.execute(text("SELECT pg_advisory_unlock(1029384756)"))
-            except Exception as e:
-                logger.error(f"Error releasing lock: {e}")
-            finally:
-                await lock_db.close()
+            except Exception:
+                pass
+            await lock_db.close()
 
 
 async def heartbeat_task():

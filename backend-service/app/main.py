@@ -4,14 +4,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import OperationalError
 from pydantic import ValidationError
 import jwt
 import json
 
 from app.core.lifespan import lifespan
-from app.api import auth, users, events
+from app.api import auth, users, events, websockets
 from app.database.database import get_db
 from app.core.exceptions import (
     NotFoundError,
@@ -146,9 +146,9 @@ async def permission_exception_handler(request, exc: PermissionError):
 
 
 @app.get("/healthz", tags=["Health"])
-async def health_check(db: Session = Depends(get_db)):
+async def health_check(db: AsyncSession = Depends(get_db)):
     try:
-        db.execute(text("SELECT 1"))
+        await db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         logger.error(f"Health check database verification failed: {e}")
@@ -161,3 +161,4 @@ async def health_check(db: Session = Depends(get_db)):
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(events.router)
+app.include_router(websockets.router)

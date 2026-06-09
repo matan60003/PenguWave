@@ -12,21 +12,60 @@ export default function EventsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const limit = 25;
 
   useEffect(() => {
+    let ignore = false;
     const timeout = setTimeout(() => {
       getEvents(page, limit, search, severityFilter)
         .then(res => {
-          setEvents(res.data);
-          setTotal(res.total);
+          if (!ignore) {
+            setEvents(res.data);
+            setTotal(res.total);
+          }
         })
-        .catch(err => console.error("Failed to fetch events:", err));
+        .catch(err => {
+          if (!ignore) console.error("Failed to fetch events:", err);
+        });
     }, 300);
-    return () => clearTimeout(timeout);
-  }, [page, search, severityFilter]);
+    return () => {
+      ignore = true;
+      clearTimeout(timeout);
+    };
+  }, [page, search, severityFilter, refreshTrigger]);
+
+  useEffect(() => {
+    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const wsUrl = backendUrl.replace(/^http/, "ws") + "/api/ws";
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log("WebSocket connected for live feed");
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "NEW_EVENTS") {
+          console.log("Real-time update: New events received. Refreshing feed...");
+          setRefreshTrigger(prev => prev + 1);
+        }
+      } catch (e) {
+        console.error("Error parsing websocket message", e);
+      }
+    };
+    
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();

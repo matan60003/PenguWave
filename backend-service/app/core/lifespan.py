@@ -11,6 +11,8 @@ from app.database.database import SessionLocal, Base, engine
 from app.database import models
 from app.core import security
 from app.core.scheduler import heartbeat_task
+import asyncpg
+from app.core.websockets import manager
 
 logger = logging.getLogger("penguwave")
 
@@ -84,6 +86,24 @@ async def lifespan(app: FastAPI):
                 db.add(default_admin)
                 await db.commit()
                 logger.info("Default admin user successfully seeded.")
+                
+            system_email = "system@penguwave.com"
+            result_sys = await db.execute(
+                select(models.User).filter(models.User.email == system_email)
+            )
+            existing_sys = result_sys.scalars().first()
+            if not existing_sys:
+                logger.info(f"Seeding default system user: {system_email}")
+                default_system = models.User(
+                    id="usr-system",
+                    email=system_email,
+                    hashed_password=security.hash_password("systempassword"),
+                    role="admin",
+                    status="active",
+                )
+                db.add(default_system)
+                await db.commit()
+                logger.info("Default system user successfully seeded.")
 
             result = await db.execute(select(models.Event).limit(1))
             existing_event = result.scalars().first()
@@ -116,12 +136,31 @@ async def lifespan(app: FastAPI):
     logger.info("Starting background scheduler...")
     scheduler_task = asyncio.create_task(heartbeat_task())
 
+    async def listen_for_events():
+        dsn = settings.DATABASE_URL.replace("+asyncpg", "")
+        try:
+            conn = await asyncpg.connect(dsn)
+            def handle_notification(connection, pid, channel, payload):
+                logger.info(f"Received notification on channel {channel}: {payload}")
+                asyncio.create_task(manager.broadcast(payload))
+
+            await conn.add_listener('new_events', handle_notification)
+            logger.info("Listening for PostgreSQL notifications on 'new_events'...")
+            while True:
+                await asyncio.sleep(3600)
+        except Exception as e:
+            logger.error(f"Error in PostgreSQL listener: {e}")
+
+    listener_task = asyncio.create_task(listen_for_events())
+
     yield
 
     logger.info("Shutting down background scheduler...")
     scheduler_task.cancel()
+    listener_task.cancel()
     try:
         await scheduler_task
+        await listener_task
     except asyncio.CancelledError:
         pass
-    logger.info("Background scheduler shut down completely.")
+    logger.info("Background tasks shut down completely.")

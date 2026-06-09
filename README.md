@@ -21,9 +21,9 @@ PenguWave operates as a decoupled monolith built for high concurrency and robust
 
 1.  **JWT Authentication & RBAC:** Secure, stateless login system. Users possess specific roles (`admin` vs `user`), and the backend strictly enforces permissions (e.g., only admins can delete events or create users). Passwords are cryptographically hashed using `bcrypt`.
 2.  **Server-Side Pagination & Search:** The Events dashboard is designed to scale infinitely. Instead of loading millions of rows into the browser, the backend uses SQLAlchemy `.limit()`, `.offset()`, and `.ilike()` operators to retrieve exactly 25 rows at a time and filter searches directly in PostgreSQL.
-3.  **Real-Time Background Telemetry Engine:** A native `asyncio` task runs silently inside the FastAPI event loop, routinely fetching data from the CISA API, running efficient batch deduplication checks (to avoid N+1 query bottlenecks), and inserting new vulnerabilities into the database without blocking the main web server.
+3.  **Real-Time Background Telemetry Engine:** A native `asyncio` task runs silently inside the FastAPI event loop, routinely fetching data from the CISA API. It maps the data directly into the Service layer using a dedicated `usr-system` account, runs efficient batch deduplication checks (chunking `IN()` clauses to avoid maximum query size limits), and inserts new vulnerabilities into the database using bulk `add_all()` without blocking the main web server.
 4.  **Resilient Network Layer:** The frontend uses an exponential backoff wrapper around `fetch()`. If the backend temporarily drops a connection or restarts, the frontend silently retries with increasing delays, preventing sudden application crashes.
-5.  **Distributed Task Locking:** Uses PostgreSQL Advisory Locks to guarantee the background scheduler only runs once per cycle, even if the FastAPI backend is horizontally scaled across multiple worker processes.
+5.  **Distributed Task Locking:** Uses explicit session-bound PostgreSQL Advisory Locks (`pg_try_advisory_lock`) to guarantee the background scheduler only runs once per cycle without leaking connections, even if the FastAPI backend is horizontally scaled across multiple worker processes.
 
 ## ⚠️ Known Limitations
 
