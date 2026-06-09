@@ -60,3 +60,14 @@ npm run dev
 Once the frontend loads, use the seeded admin credentials to log in:
 *   **Email:** `admin@penguwave.com`
 *   **Password:** `adminpassword`
+
+---
+
+## 🔒 Production Deployment & Security Basics
+
+To securely host this application on the internet, I would implement these fundamental security practices:
+
+1.  **HTTPS (Encryption):** I would never run the app on basic HTTP. I would set up an SSL Certificate (using something free like Let's Encrypt) to ensure all traffic between the user's browser and the server is encrypted.
+2.  **Hiding Passwords (Environment Variables):** Currently, passwords (like the database password) might be written in configuration files for local testing. Before going live, I would move all passwords into hidden `.env` files or a cloud Secret Manager so they are never uploaded to GitHub.
+3.  **Database Isolation:** I would make sure the PostgreSQL database is not accessible from the open internet. The database port (5432) should be completely blocked from the outside, and only the FastAPI backend should be allowed to talk to it.
+4.  **Rate Limiting:** To prevent hackers from using automated bots to guess user passwords (brute-force attacks), I would add Rate Limiting to the API. This would block an IP address if it tries to log in too many times in a row.
