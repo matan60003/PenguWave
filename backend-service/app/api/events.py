@@ -43,7 +43,7 @@ async def create_event(
     db: AsyncSession = Depends(get_db),
 ):
     result = await event_service.create_event(event_data)
-    await db.execute(text('NOTIFY new_events, \'{"type"\: "NEW_EVENTS"}\''))
+    await db.execute(text('NOTIFY new_events, \'{"type": "NEW_EVENTS"}\''))
     await db.commit()
     await db.refresh(result)
     return result
@@ -65,6 +65,6 @@ async def delete_event(
     db: AsyncSession = Depends(get_db),
 ):
     await event_service.delete_event(id)
-    await db.execute(text('NOTIFY new_events, \'{"type"\: "NEW_EVENTS"}\''))
+    await db.execute(text('NOTIFY new_events, \'{"type": "NEW_EVENTS"}\''))
     await db.commit()
     return {"message": "Event deleted"}

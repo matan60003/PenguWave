@@ -70,7 +70,7 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
 
             if added_count > 0:
                 logger.info(f"Successfully ingested {added_count} new CISA KEV events.")
-                await db.execute(text('NOTIFY new_events, \'{"type"\: "NEW_EVENTS"}\''))
+                await db.execute(text('NOTIFY new_events, \'{"type": "NEW_EVENTS"}\''))
                 await db.commit()
     except Exception:
         logger.error("Database error during CISA ingestion", exc_info=True)
