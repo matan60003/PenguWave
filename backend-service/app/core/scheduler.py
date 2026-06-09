@@ -35,7 +35,9 @@ async def _ingest_vulnerabilities(vulnerabilities: list):
             try:
                 dt = datetime.strptime(raw_date, "%Y-%m-%d")
                 current_time = datetime.now(timezone.utc).time()
-                combined_dt = datetime.combine(dt.date(), current_time).replace(tzinfo=timezone.utc)
+                combined_dt = datetime.combine(dt.date(), current_time).replace(
+                    tzinfo=timezone.utc
+                )
                 timestamp = combined_dt.isoformat()
             except ValueError:
                 timestamp = datetime.now(timezone.utc).isoformat()
