@@ -1,4 +1,5 @@
 import uuid
+from sqlalchemy.exc import IntegrityError
 from app.core.exceptions import ValidationError, NotFoundError
 from app.database import models
 from app.schemas import schemas
@@ -26,7 +27,10 @@ class UserService:
             role=user_data.role,
             status="active",
         )
-        return await self.user_repo.create(new_user)
+        try:
+            return await self.user_repo.create(new_user)
+        except IntegrityError:
+            raise ValidationError("User with this email already exists")
 
     async def update_user(self, id: str, user_data: schemas.UserUpdate):
         user = await self.user_repo.get_by_id(id)
