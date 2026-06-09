@@ -1,22 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { login } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { loginSchema, LoginFormValues } from "../utils/validation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { login: loginContext } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
     setError("");
 
     try {
-      const data = await login(email, password);
-      loginContext(data.token, data.user);
+      const res = await login(data.email, data.password);
+      loginContext(res.token, res.user);
       navigate("/events");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Invalid email or password");
@@ -30,29 +38,29 @@ export default function LoginPage() {
         Enter your credentials to access PenguWave
       </p>
       {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <div style={{ marginBottom: 12 }}>
           <label>Email</label>
           <input
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...register("email")}
             placeholder="you@company.com"
-            style={{ width: "100%", padding: "8px", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "8px", boxSizing: "border-box", borderColor: errors.email ? "red" : undefined }}
           />
+          {errors.email && <div style={{ color: "red", fontSize: 12, marginTop: 4 }}>{errors.email.message}</div>}
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Password</label>
           <input
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            {...register("password")}
             placeholder="••••••••"
-            style={{ width: "100%", padding: "8px", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "8px", boxSizing: "border-box", borderColor: errors.password ? "red" : undefined }}
           />
+          {errors.password && <div style={{ color: "red", fontSize: 12, marginTop: 4 }}>{errors.password.message}</div>}
         </div>
-        <button type="submit" className="btn-primary" style={{ width: "100%", padding: "10px" }}>
-          Sign In
+        <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: "100%", padding: "10px" }}>
+          {isSubmitting ? "Signing In..." : "Sign In"}
         </button>
       </form>
     </div>

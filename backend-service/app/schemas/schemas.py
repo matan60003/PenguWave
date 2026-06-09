@@ -1,10 +1,10 @@
 from typing import Literal, Optional
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, Field
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1)
 
 
 class UserResponse(BaseModel):
@@ -25,7 +25,7 @@ class LoginResponse(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=6)
     role: Literal["admin", "analyst", "user"] = "user"
 
 
