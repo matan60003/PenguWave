@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import WelcomeBanner from "./components/WelcomeBanner";
+
 import EventsPage from "./pages/EventsPage";
 import UsersPage from "./pages/UsersPage";
 import NotFound from "./pages/NotFound";
@@ -13,7 +13,7 @@ function App() {
     <AuthProvider>
       <Navbar />
       <div className="container">
-        <WelcomeBanner />
+
         <Routes>
           <Route path="/" element={<Navigate to="/events" replace />} />
           <Route path="/login" element={<LoginPage />} />
